@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm ci && npm run build",
+  "installCommand": "npm ci",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://your-render-backend.onrender.com"
+  }
+}
