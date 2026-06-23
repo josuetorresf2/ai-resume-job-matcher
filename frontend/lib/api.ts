@@ -36,9 +36,26 @@ export type JobPost = {
   recruiter_user_id: number;
   title: string;
   company: string;
+  location: string;
+  work_mode: "remote" | "hybrid" | "onsite";
+  salary_range: string;
+  experience_level: string;
+  required_skills: string;
+  nice_to_have_skills: string;
   description: string;
   created_at: string;
   updated_at: string;
+};
+
+export type JobDashboardItem = JobPost & {
+  candidates_matched: number;
+  average_match_score: number;
+  shortlisted_count: number;
+};
+
+export type RecruiterDashboard = {
+  job_posts: JobDashboardItem[];
+  total_shortlisted: number;
 };
 
 export type Analysis = {
@@ -49,12 +66,26 @@ export type Analysis = {
   recruiter_user_id?: number | null;
   match_score: number;
   missing_skills: string[];
+  strongest_skills: string[];
   improvements: string[];
   summary: string;
+  resume_summary: string;
+  fit_summary: string;
+  concerns: string[];
+  interview_questions: string[];
+  recommendation: string;
+  recruiter_status?: "Shortlisted" | "Maybe" | "Rejected" | null;
+  recruiter_notes?: string | null;
   created_at: string;
   source: string;
   resume_text?: string;
   job_description?: string;
+};
+
+export type RankedCandidateMatch = Analysis & {
+  candidate_name: string;
+  candidate_headline: string;
+  resume_title: string;
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -63,12 +94,31 @@ function sessionHeaders(user?: User | null): HeadersInit {
   return user ? { "Content-Type": "application/json", "X-User-Id": String(user.id) } : { "Content-Type": "application/json" };
 }
 
+function humanizeErrorDetail(detail: unknown, fallback: string): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) return String(item.msg);
+        return JSON.stringify(item);
+      })
+      .join(" ");
+  }
+  if (detail && typeof detail === "object") {
+    if ("message" in detail) return String(detail.message);
+    if ("msg" in detail) return String(detail.msg);
+    return JSON.stringify(detail);
+  }
+  return fallback;
+}
+
 async function parseResponse<T>(response: Response, fallback: string): Promise<T> {
   if (response.ok) return response.json();
   let message = fallback;
   try {
     const payload = await response.json();
-    message = payload.detail ?? fallback;
+    message = humanizeErrorDetail(payload.detail, fallback);
   } catch {
     message = await response.text();
   }
@@ -135,22 +185,42 @@ export async function listResumes(user: User): Promise<Resume[]> {
   return parseResponse<Resume[]>(response, "Could not load resumes.");
 }
 
-export async function createJobPost(user: User, title: string, company: string, description: string): Promise<JobPost> {
+export type JobPostInput = {
+  title: string;
+  company: string;
+  location: string;
+  work_mode: "remote" | "hybrid" | "onsite";
+  salary_range: string;
+  experience_level: string;
+  required_skills: string;
+  nice_to_have_skills: string;
+  description: string;
+};
+
+export async function createJobPost(user: User, input: JobPostInput): Promise<JobPost> {
   const response = await fetch(`${API_URL}/job-posts`, {
     method: "POST",
     headers: sessionHeaders(user),
-    body: JSON.stringify({ title, company, description }),
+    body: JSON.stringify(input),
   });
   return parseResponse<JobPost>(response, "Could not save job post.");
 }
 
-export async function updateJobPost(user: User, jobPostId: number, title: string, company: string, description: string): Promise<JobPost> {
+export async function updateJobPost(user: User, jobPostId: number, input: JobPostInput): Promise<JobPost> {
   const response = await fetch(`${API_URL}/job-posts/${jobPostId}`, {
     method: "PUT",
     headers: sessionHeaders(user),
-    body: JSON.stringify({ title, company, description }),
+    body: JSON.stringify(input),
   });
   return parseResponse<JobPost>(response, "Could not update job post.");
+}
+
+export async function deleteJobPost(user: User, jobPostId: number): Promise<void> {
+  const response = await fetch(`${API_URL}/job-posts/${jobPostId}`, {
+    method: "DELETE",
+    headers: sessionHeaders(user),
+  });
+  await parseResponse<{ status: string }>(response, "Could not delete job post.");
 }
 
 export async function listJobPosts(): Promise<JobPost[]> {
@@ -161,6 +231,30 @@ export async function listJobPosts(): Promise<JobPost[]> {
 export async function listMyJobPosts(user: User): Promise<JobPost[]> {
   const response = await fetch(`${API_URL}/job-posts/mine`, { headers: sessionHeaders(user), cache: "no-store" });
   return parseResponse<JobPost[]>(response, "Could not load your job posts.");
+}
+
+export async function getRecruiterDashboard(user: User): Promise<RecruiterDashboard> {
+  const response = await fetch(`${API_URL}/recruiter/dashboard`, { headers: sessionHeaders(user), cache: "no-store" });
+  return parseResponse<RecruiterDashboard>(response, "Could not load recruiter dashboard.");
+}
+
+export async function listRankedCandidates(user: User, jobPostId: number): Promise<RankedCandidateMatch[]> {
+  const response = await fetch(`${API_URL}/job-posts/${jobPostId}/ranked-candidates`, { headers: sessionHeaders(user), cache: "no-store" });
+  return parseResponse<RankedCandidateMatch[]>(response, "Could not load ranked candidates.");
+}
+
+export async function updateMatchReview(
+  user: User,
+  analysisId: number,
+  recruiterStatus: "Shortlisted" | "Maybe" | "Rejected",
+  recruiterNotes: string,
+): Promise<Analysis> {
+  const response = await fetch(`${API_URL}/matches/${analysisId}/review`, {
+    method: "PUT",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ recruiter_status: recruiterStatus, recruiter_notes: recruiterNotes }),
+  });
+  return parseResponse<Analysis>(response, "Could not update candidate review.");
 }
 
 export async function createMatch(user: User, resumeId: number, jobPostId: number): Promise<Analysis> {

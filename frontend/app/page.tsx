@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Analysis,
   CandidateProfile,
+  JobDashboardItem,
+  JobPostInput,
   JobPost,
+  RankedCandidateMatch,
   RecruiterProfile,
   Resume,
   Role,
@@ -12,9 +15,12 @@ import {
   createJobPost,
   createMatch,
   createResume,
+  deleteJobPost,
   extractResumeText,
   getCandidateProfile,
   getRecruiterProfile,
+  getRecruiterDashboard,
+  listRankedCandidates,
   listJobPosts,
   listMatches,
   listMyJobPosts,
@@ -22,6 +28,7 @@ import {
   mockLogin,
   saveCandidateProfile,
   saveRecruiterProfile,
+  updateMatchReview,
   updateJobPost,
   updateResume,
 } from "../lib/api";
@@ -49,7 +56,9 @@ export default function Home() {
     setError("");
     setLoading(true);
     try {
-      const session = await mockLogin(name || (selectedRole === "candidate" ? "Demo Candidate" : "Demo Recruiter"), email, selectedRole);
+      const safeName = name || (selectedRole === "candidate" ? "Demo Candidate" : "Demo Recruiter");
+      const safeEmail = email || `${selectedRole}-${Date.now()}@example.com`;
+      const session = await mockLogin(safeName, safeEmail, selectedRole);
       setRole(session.role);
       setUser(session);
     } catch (err) {
@@ -383,7 +392,18 @@ function RecruiterDashboard({ user }: { user: User }) {
     setError("");
     setNotice("");
     try {
-      const saved = jobId ? await updateJobPost(user, Number(jobId), jobTitle, company, description) : await createJobPost(user, jobTitle, company, description);
+      const jobInput: JobPostInput = {
+        title: jobTitle,
+        company,
+        location: "",
+        work_mode: "remote",
+        salary_range: "",
+        experience_level: "",
+        required_skills: "",
+        nice_to_have_skills: "",
+        description,
+      };
+      const saved = jobId ? await updateJobPost(user, Number(jobId), jobInput) : await createJobPost(user, jobInput);
       await refreshRecruiter();
       setJobId(String(saved.id));
       setNotice("Job post saved to your recruiter account.");

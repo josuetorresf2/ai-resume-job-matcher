@@ -71,12 +71,24 @@ class ResumeResponse(BaseModel):
 class JobPostCreate(BaseModel):
     title: str = Field(..., min_length=2)
     company: str = ""
+    location: str = ""
+    work_mode: str = Field(default="remote", pattern="^(remote|hybrid|onsite)$")
+    salary_range: str = ""
+    experience_level: str = ""
+    required_skills: str = ""
+    nice_to_have_skills: str = ""
     description: str = Field(..., min_length=20)
 
 
 class JobPostUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=2)
     company: Optional[str] = None
+    location: Optional[str] = None
+    work_mode: Optional[str] = Field(default=None, pattern="^(remote|hybrid|onsite)$")
+    salary_range: Optional[str] = None
+    experience_level: Optional[str] = None
+    required_skills: Optional[str] = None
+    nice_to_have_skills: Optional[str] = None
     description: Optional[str] = Field(default=None, min_length=20)
 
 
@@ -85,6 +97,12 @@ class JobPostResponse(BaseModel):
     recruiter_user_id: int
     title: str
     company: str
+    location: str
+    work_mode: str
+    salary_range: str
+    experience_level: str
+    required_skills: str
+    nice_to_have_skills: str
     description: str
     created_at: datetime
     updated_at: datetime
@@ -95,6 +113,11 @@ class JobPostResponse(BaseModel):
 class MatchCreate(BaseModel):
     resume_id: int
     job_post_id: int
+
+
+class MatchReviewUpdate(BaseModel):
+    recruiter_status: str = Field(..., pattern="^(Shortlisted|Maybe|Rejected)$")
+    recruiter_notes: str = ""
 
 
 class AnalysisCreate(BaseModel):
@@ -110,8 +133,16 @@ class AnalysisResult(BaseModel):
     recruiter_user_id: Optional[int] = None
     match_score: int
     missing_skills: list[str]
+    strongest_skills: list[str] = []
     improvements: list[str]
     summary: str
+    resume_summary: str = ""
+    fit_summary: str = ""
+    concerns: list[str] = []
+    interview_questions: list[str] = []
+    recommendation: str = "Possible fit"
+    recruiter_status: Optional[str] = None
+    recruiter_notes: Optional[str] = None
     created_at: datetime
     source: str
 
@@ -121,3 +152,20 @@ class AnalysisResult(BaseModel):
 class AnalysisDetail(AnalysisResult):
     resume_text: str
     job_description: str
+
+
+class RankedCandidateMatch(AnalysisResult):
+    candidate_name: str
+    candidate_headline: str = ""
+    resume_title: str = ""
+
+
+class JobDashboardItem(JobPostResponse):
+    candidates_matched: int
+    average_match_score: int
+    shortlisted_count: int
+
+
+class RecruiterDashboardResponse(BaseModel):
+    job_posts: list[JobDashboardItem]
+    total_shortlisted: int
