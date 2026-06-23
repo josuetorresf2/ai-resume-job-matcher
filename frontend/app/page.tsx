@@ -42,6 +42,7 @@ const sampleJob =
 export default function Home() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [role, setRole] = useState<Role | null>(null);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -54,11 +55,17 @@ export default function Home() {
 
   async function onLogin(selectedRole: Role) {
     setError("");
+    if (!name.trim()) {
+      setError("Enter your name before continuing.");
+      return;
+    }
+    if (!email.trim() || !email.includes("@")) {
+      setError("Enter a valid email before continuing.");
+      return;
+    }
     setLoading(true);
     try {
-      const safeName = name || (selectedRole === "candidate" ? "Demo Candidate" : "Demo Recruiter");
-      const safeEmail = email || `${selectedRole}-${Date.now()}@example.com`;
-      const session = await mockLogin(safeName, safeEmail, selectedRole);
+      const session = await mockLogin(name.trim(), email.trim(), selectedRole);
       setRole(session.role);
       setUser(session);
     } catch (err) {
@@ -71,6 +78,7 @@ export default function Home() {
   function resetSession() {
     setUser(null);
     setRole(null);
+    setSelectedRole(null);
     setError("");
   }
 
@@ -92,7 +100,17 @@ export default function Home() {
       </header>
 
       {!user || !role ? (
-        <RoleSelection name={name} email={email} error={error} loading={loading} setName={setName} setEmail={setEmail} onLogin={onLogin} />
+        <RoleSelection
+          name={name}
+          email={email}
+          error={error}
+          loading={loading}
+          selectedRole={selectedRole}
+          setName={setName}
+          setEmail={setEmail}
+          setSelectedRole={setSelectedRole}
+          onLogin={onLogin}
+        />
       ) : role === "candidate" ? (
         <CandidateDashboard user={user} />
       ) : (
@@ -107,19 +125,23 @@ function RoleSelection({
   email,
   error,
   loading,
+  selectedRole,
   setName,
   setEmail,
+  setSelectedRole,
   onLogin,
 }: {
   name: string;
   email: string;
   error: string;
   loading: boolean;
+  selectedRole: Role | null;
   setName: (value: string) => void;
   setEmail: (value: string) => void;
+  setSelectedRole: (value: Role) => void;
   onLogin: (role: Role) => Promise<void>;
 }) {
-  const canLogin = !loading;
+  const canLogin = Boolean(selectedRole) && !loading;
 
   return (
     <section className="role-grid">
@@ -145,13 +167,26 @@ function RoleSelection({
           </div>
         ) : null}
         <div className="role-actions">
-          <button className="primary-action" disabled={!canLogin} onClick={() => onLogin("recruiter")}>
+          <button
+            className={selectedRole === "recruiter" ? "primary-action" : "secondary-action"}
+            disabled={loading}
+            onClick={() => setSelectedRole("recruiter")}
+          >
             I am a Recruiter
           </button>
-          <button className="secondary-action" disabled={!canLogin} onClick={() => onLogin("candidate")}>
+          <button
+            className={selectedRole === "candidate" ? "primary-action" : "secondary-action"}
+            disabled={loading}
+            onClick={() => setSelectedRole("candidate")}
+          >
             I am a Candidate
           </button>
+          <button className="primary-action" disabled={!canLogin} onClick={() => selectedRole && onLogin(selectedRole)}>
+            {loading ? <span className="spinner" /> : null}
+            Continue as {selectedRole ? selectedRole[0].toUpperCase() + selectedRole.slice(1) : "selected role"}
+          </button>
         </div>
+        <p className="form-hint">Select a role, enter your name and email, then continue.</p>
       </div>
       <div className="panel permissions-panel">
         <h2>Permission model</h2>

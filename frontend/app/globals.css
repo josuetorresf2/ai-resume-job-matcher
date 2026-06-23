@@ -358,6 +358,13 @@ textarea:focus {
   gap: 10px;
 }
 
+.form-hint {
+  color: var(--faint);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 12px 0 0;
+}
+
 .permission-list {
   display: grid;
   gap: 14px;
