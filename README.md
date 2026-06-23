@@ -1,6 +1,6 @@
 # AI Resume & Job Matcher
 
-Full-stack portfolio project that compares a resume against a job description and returns a match score, missing skills, and targeted resume improvements.
+Full-stack portfolio project for matching candidate resumes to recruiter job posts with role-based ownership checks.
 
 ## Tech Stack
 
@@ -14,13 +14,15 @@ Full-stack portfolio project that compares a resume against a job description an
 
 ## Features
 
-- Paste resume text or upload a UTF-8 `.txt` resume or readable PDF
-- Paste a job description
-- Generate a 0-100 match score
-- Show missing skills
-- Suggest resume improvements
-- Store previous analyses in SQLite
-- Dashboard with latest score, saved analyses, average score, and history
+- First screen lets users choose Candidate or Recruiter
+- Mock session login using `X-User-Id` request headers
+- Candidates can edit only their own profile and resumes
+- Recruiters can edit only their own profile and job posts
+- Candidates can match their own resume against public job posts
+- Recruiters can view match results tied to their own job posts
+- PDF and UTF-8 TXT resume extraction
+- OpenAI-backed analysis with local heuristic fallback
+- SQLite tables for users, candidates, recruiters, resumes, job posts, and analyses
 
 ## Project Structure
 
@@ -34,6 +36,7 @@ ai-resume-job-matcher/
       database.py
       main.py
       models.py
+      resume_parser.py
       schemas.py
     tests/
     Dockerfile
@@ -52,6 +55,27 @@ ai-resume-job-matcher/
 ## Project Rules
 
 See `AGENTS.md` for the coding rules used by this project.
+
+## Role-Based Model
+
+The current app uses mock authentication so the portfolio can demonstrate authorization without a production auth provider.
+
+- `POST /auth/mock-login` creates or returns a user with role `candidate` or `recruiter`.
+- Protected requests include `X-User-Id: <id>`.
+- Candidate-only routes reject recruiters with `403`.
+- Recruiter-only routes reject candidates with `403`.
+- Ownership checks prevent users from editing records they do not own.
+
+Database tables:
+
+- `users`
+- `candidates`
+- `recruiters`
+- `resumes`
+- `job_posts`
+- `analyses`
+
+The `analyses` table links `resume_id` and `job_post_id`, plus candidate and recruiter user ids for role-filtered match history.
 
 ## Local Setup
 
