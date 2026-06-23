@@ -87,8 +87,8 @@ export default function Home() {
           <div className="panel-header">
             <h2>Inputs</h2>
             <label className="file-button">
-              Upload .txt
-              <input type="file" accept=".txt,text/plain" onChange={onFileChange} />
+              Upload resume
+              <input type="file" accept=".txt,.pdf,text/plain,application/pdf" onChange={onFileChange} />
             </label>
           </div>
 

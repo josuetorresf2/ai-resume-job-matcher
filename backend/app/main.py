@@ -7,6 +7,7 @@ from .analysis import ai_analysis
 from .config import get_settings
 from .database import Base, engine, get_db
 from .models import Analysis
+from .resume_parser import extract_pdf_text, extract_text_file
 from .schemas import AnalysisCreate, AnalysisDetail, AnalysisResult, HealthResponse
 
 
@@ -63,10 +64,16 @@ def create_analysis(payload: AnalysisCreate, db: Session = Depends(get_db)) -> A
 @app.post("/resume-text")
 async def extract_resume_text(file: UploadFile = File(...)) -> dict[str, str]:
     content = await file.read()
-    try:
-        text = content.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise HTTPException(status_code=400, detail="Only UTF-8 text files are supported.") from exc
+    filename = (file.filename or "").lower()
+    content_type = (file.content_type or "").lower()
+
+    if content_type == "application/pdf" or filename.endswith(".pdf"):
+        text = extract_pdf_text(content)
+    elif content_type.startswith("text/") or filename.endswith(".txt"):
+        text = extract_text_file(content)
+    else:
+        raise HTTPException(status_code=400, detail="Upload a UTF-8 .txt file or readable PDF.")
+
     return {"text": text}
 
 

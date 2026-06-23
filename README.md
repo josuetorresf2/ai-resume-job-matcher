@@ -14,7 +14,7 @@ Full-stack portfolio project that compares a resume against a job description an
 
 ## Features
 
-- Paste resume text or upload a UTF-8 `.txt` resume
+- Paste resume text or upload a UTF-8 `.txt` resume or readable PDF
 - Paste a job description
 - Generate a 0-100 match score
 - Show missing skills

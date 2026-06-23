@@ -31,3 +31,22 @@ def test_create_and_list_analysis():
     listed = client.get("/analyses")
     assert listed.status_code == 200
     assert len(listed.json()) >= 1
+
+
+def test_extract_text_resume_upload():
+    response = client.post(
+        "/resume-text",
+        files={"file": ("resume.txt", b"Python FastAPI resume", "text/plain")},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"text": "Python FastAPI resume"}
+
+
+def test_extract_pdf_resume_upload(monkeypatch):
+    monkeypatch.setattr("app.main.extract_pdf_text", lambda content: "PDF resume text")
+    response = client.post(
+        "/resume-text",
+        files={"file": ("resume.pdf", b"%PDF fake", "application/pdf")},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"text": "PDF resume text"}

@@ -44,7 +44,7 @@ export async function extractResumeText(file: File): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error("Could not read that resume file. Use a UTF-8 .txt file.");
+    throw new Error("Could not read that resume file. Use a UTF-8 .txt file or readable PDF.");
   }
 
   const payload = await response.json();
