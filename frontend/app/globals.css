@@ -284,6 +284,12 @@ h3 {
   max-width: 1240px;
 }
 
+.role-grid-form {
+  grid-template-columns: minmax(520px, 760px);
+  justify-content: center;
+  max-width: 860px;
+}
+
 .role-workspace {
   grid-template-columns: repeat(3, minmax(320px, 1fr));
 }

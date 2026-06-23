@@ -636,7 +636,7 @@ function RoleSelection({
   const visiblePreviewJobs = previewJobs.slice(0, 3);
 
   return (
-    <section className="role-grid">
+    <section className={selectedRole ? "role-grid role-grid-form" : "role-grid"}>
       <div className={selectedRole ? "panel role-panel" : "panel role-panel role-panel-intro"}>
         <div className="panel-header">
           <div>
@@ -717,49 +717,51 @@ function RoleSelection({
           </>
         )}
       </div>
-      <div className="panel market-panel">
-        <div className="panel-header">
-          <div>
-            <h2>{c.marketPreviewTitle}</h2>
-            <p>{c.marketPreviewHelp}</p>
+      {!selectedRole ? (
+        <div className="panel market-panel">
+          <div className="panel-header">
+            <div>
+              <h2>{c.marketPreviewTitle}</h2>
+              <p>{c.marketPreviewHelp}</p>
+            </div>
+          </div>
+          <label className="field">
+            <span>{c.searchJobs}</span>
+            <input value={jobSearch} onChange={(event) => setJobSearch(event.target.value)} placeholder={c.jobSearchPlaceholder} />
+          </label>
+          <label className="field">
+            <span>{c.targetMarket}</span>
+            <select value={targetMarket} onChange={(event) => setTargetMarket(event.target.value as TargetMarket)}>
+              {MARKET_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {c[option.labelKey]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="market-signal-grid">
+            <span>{marketJobs.length} · {c.openRoles}</span>
+            <span>{c.remoteFriendly}</span>
+            <span>{c.salarySignal}</span>
+            <span>{c.localHiring}</span>
+          </div>
+          <div className="job-preview-list">
+            {visiblePreviewJobs.length ? (
+              visiblePreviewJobs.map((job) => (
+                <div className="job-preview-card" key={job.role}>
+                  <div>
+                    <strong>{job.role}</strong>
+                    <p>{job.signal}</p>
+                  </div>
+                  <span>{job.demand}%</span>
+                </div>
+              ))
+            ) : (
+              <p className="empty-preview">{c.noMarketMatch}</p>
+            )}
           </div>
         </div>
-        <label className="field">
-          <span>{c.searchJobs}</span>
-          <input value={jobSearch} onChange={(event) => setJobSearch(event.target.value)} placeholder={c.jobSearchPlaceholder} />
-        </label>
-        <label className="field">
-          <span>{c.targetMarket}</span>
-          <select value={targetMarket} onChange={(event) => setTargetMarket(event.target.value as TargetMarket)}>
-            {MARKET_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {c[option.labelKey]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="market-signal-grid">
-          <span>{marketJobs.length} · {c.openRoles}</span>
-          <span>{c.remoteFriendly}</span>
-          <span>{c.salarySignal}</span>
-          <span>{c.localHiring}</span>
-        </div>
-        <div className="job-preview-list">
-          {visiblePreviewJobs.length ? (
-            visiblePreviewJobs.map((job) => (
-              <div className="job-preview-card" key={job.role}>
-                <div>
-                  <strong>{job.role}</strong>
-                  <p>{job.signal}</p>
-                </div>
-                <span>{job.demand}%</span>
-              </div>
-            ))
-          ) : (
-            <p className="empty-preview">{c.noMarketMatch}</p>
-          )}
-        </div>
-      </div>
+      ) : null}
     </section>
   );
 }
