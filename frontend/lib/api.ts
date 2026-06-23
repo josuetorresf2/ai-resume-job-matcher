@@ -24,6 +24,7 @@ export type CandidateProfile = {
   portfolio_url: string;
   github_url: string;
   linkedin_url: string;
+  project_demo_urls: string;
   visibility: "private" | "visible_to_verified_recruiters" | "public";
   completeness_score?: number;
   bio: string;

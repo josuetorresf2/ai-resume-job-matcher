@@ -614,6 +614,40 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.14);
 }
 
+.compact-textarea {
+  min-height: 120px;
+}
+
+.proof-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 18px 0;
+  padding: 16px;
+}
+
+.proof-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.proof-links a {
+  background: rgba(45, 212, 191, 0.1);
+  border: 1px solid rgba(45, 212, 191, 0.22);
+  border-radius: 999px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.proof-links a:hover {
+  border-color: rgba(45, 212, 191, 0.55);
+  color: var(--ink);
+}
+
 .primary-action {
   align-items: center;
   background: linear-gradient(135deg, var(--brand), var(--brand-dark));

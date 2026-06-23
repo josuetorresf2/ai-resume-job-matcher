@@ -37,6 +37,7 @@ The project is production-oriented: PostgreSQL-ready persistence, SQLAlchemy mig
 - Market-first onboarding with role selection before personal data entry
 - Job discovery preview for Latin America, Africa, and global remote work
 - English, Spanish, Portuguese, French, and Swahili UI support
+- Candidate proof-of-work links for live demos, GitHub repos, portfolio, LinkedIn, case studies, and docs
 - User language preference stored in the backend
 - AI/fallback responses generated in the selected language
 - PDF and TXT resume upload
@@ -195,6 +196,14 @@ npm run dev
 
 ## Deployment
 
+Recommended free-first path:
+
+- Frontend: Vercel Hobby or Cloudflare Pages.
+- Backend: Render free web service, Fly.io free allowance, or another low-cost container host for FastAPI.
+- Database: Supabase Postgres free tier or Render Postgres if available in the account.
+
+This repo keeps the frontend and backend deployable separately. The frontend can go live first, but the AI/job workflows need `NEXT_PUBLIC_API_URL` set to the deployed backend URL.
+
 ### Backend: Render
 
 This repo includes `render.yaml`.
@@ -228,7 +237,7 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
 This repo includes `vercel.json`.
 
 1. Import the GitHub repo into Vercel.
-2. Set the project root to the repository root or use the included `vercel.json`.
+2. Set the project root to the repository root or `frontend`. The root `vercel.json` builds with `npm --prefix frontend` so monorepo builds install the correct package.
 3. Add environment variable:
    - `NEXT_PUBLIC_API_URL=https://your-render-backend.onrender.com`
 4. Deploy.

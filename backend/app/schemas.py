@@ -54,6 +54,7 @@ class CandidateProfileUpdate(BaseModel):
     portfolio_url: str = ""
     github_url: str = ""
     linkedin_url: str = ""
+    project_demo_urls: str = ""
     visibility: str = Field(default="private", pattern="^(private|visible_to_verified_recruiters|public)$")
     bio: str = ""
 

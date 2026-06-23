@@ -152,6 +152,17 @@ const COPY = {
     headline: "Headline",
     skills: "Skills",
     bio: "Bio",
+    proofOfWork: "Proof of work",
+    proofOfWorkHelp: "Add links that prove what you can build: live demos, GitHub repos, portfolio, or technical writeups.",
+    portfolioUrl: "Portfolio URL",
+    githubProfile: "GitHub profile",
+    linkedinProfile: "LinkedIn profile",
+    projectDemos: "Project demo URLs",
+    projectDemosHint: "One URL per line: live app, repo, case study, video demo, or documentation.",
+    openPortfolio: "Open portfolio",
+    openGitHub: "Open GitHub",
+    openLinkedIn: "Open LinkedIn",
+    openDemo: "Open demo",
     visibility: "Visibility",
     private: "Private",
     verifiedRecruiters: "Verified recruiters",
@@ -290,6 +301,17 @@ const COPY = {
     headline: "Titulo profesional",
     skills: "Habilidades",
     bio: "Bio",
+    proofOfWork: "Pruebas de trabajo",
+    proofOfWorkHelp: "Agrega links que demuestren lo que puedes construir: demos, repos, portafolio o documentacion tecnica.",
+    portfolioUrl: "URL del portafolio",
+    githubProfile: "Perfil de GitHub",
+    linkedinProfile: "Perfil de LinkedIn",
+    projectDemos: "URLs de demos de proyectos",
+    projectDemosHint: "Una URL por linea: app en vivo, repo, caso de estudio, video demo o documentacion.",
+    openPortfolio: "Abrir portafolio",
+    openGitHub: "Abrir GitHub",
+    openLinkedIn: "Abrir LinkedIn",
+    openDemo: "Abrir demo",
     visibility: "Visibilidad",
     private: "Privado",
     verifiedRecruiters: "Reclutadores verificados",
@@ -777,6 +799,7 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
     portfolio_url: "",
     github_url: "",
     linkedin_url: "",
+    project_demo_urls: "",
     visibility: "private",
     bio: "",
   });
@@ -929,6 +952,31 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
             <span>{c.bio}</span>
             <textarea value={profile.bio} onChange={(event) => setProfile({ ...profile, bio: event.target.value })} />
           </label>
+          <div className="proof-section">
+            <PanelTitle title={c.proofOfWork} subtitle={c.proofOfWorkHelp} />
+            <label className="field">
+              <span>{c.portfolioUrl}</span>
+              <input value={profile.portfolio_url} onChange={(event) => setProfile({ ...profile, portfolio_url: event.target.value })} placeholder="https://your-portfolio.com" />
+            </label>
+            <label className="field">
+              <span>{c.githubProfile}</span>
+              <input value={profile.github_url} onChange={(event) => setProfile({ ...profile, github_url: event.target.value })} placeholder="https://github.com/your-username" />
+            </label>
+            <label className="field">
+              <span>{c.linkedinProfile}</span>
+              <input value={profile.linkedin_url} onChange={(event) => setProfile({ ...profile, linkedin_url: event.target.value })} placeholder="https://linkedin.com/in/your-name" />
+            </label>
+            <label className="field">
+              <span>{c.projectDemos}</span>
+              <textarea
+                className="compact-textarea"
+                value={profile.project_demo_urls}
+                onChange={(event) => setProfile({ ...profile, project_demo_urls: event.target.value })}
+                placeholder={c.projectDemosHint}
+              />
+            </label>
+            <ProofLinks profile={profile} c={c} />
+          </div>
           <label className="field">
             <span>{c.visibility}</span>
             <select value={profile.visibility} onChange={(event) => setProfile({ ...profile, visibility: event.target.value as CandidateProfile["visibility"] })}>
@@ -1082,6 +1130,38 @@ function CandidateInsights({
           <ul>{github.recommendations.map((item) => <li key={item}>{item}</li>)}</ul>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function normalizeUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+function ProofLinks({ profile, c }: { profile: CandidateProfile; c: Copy }) {
+  const demos = profile.project_demo_urls
+    .split(/\r?\n/)
+    .map(normalizeUrl)
+    .filter(Boolean)
+    .slice(0, 4);
+  const links = [
+    [c.openPortfolio, normalizeUrl(profile.portfolio_url)],
+    [c.openGitHub, normalizeUrl(profile.github_url)],
+    [c.openLinkedIn, normalizeUrl(profile.linkedin_url)],
+    ...demos.map((url, index) => [`${c.openDemo} ${index + 1}`, url] as [string, string]),
+  ].filter(([, url]) => url);
+
+  if (!links.length) return null;
+
+  return (
+    <div className="proof-links">
+      {links.map(([label, url]) => (
+        <a key={`${label}-${url}`} href={url} target="_blank" rel="noreferrer">
+          {label}
+        </a>
+      ))}
     </div>
   );
 }

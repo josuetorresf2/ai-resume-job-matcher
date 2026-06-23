@@ -132,6 +132,7 @@ def initialize_database() -> None:
                 "portfolio_url": "TEXT DEFAULT ''",
                 "github_url": "TEXT DEFAULT ''",
                 "linkedin_url": "TEXT DEFAULT ''",
+                "project_demo_urls": "TEXT DEFAULT ''",
                 "visibility": "TEXT DEFAULT 'private'",
                 "completeness_score": "INTEGER DEFAULT 0",
             }
@@ -250,7 +251,7 @@ def update_candidate_score(db: Session, user: User) -> None:
         profile.skills,
         profile.experience,
         profile.education,
-        [profile.portfolio_url, profile.github_url, profile.linkedin_url],
+        [profile.portfolio_url, profile.github_url, profile.linkedin_url, profile.project_demo_urls],
         user.language,
     )
 
@@ -498,6 +499,7 @@ def update_candidate_profile(
     profile.portfolio_url = payload.portfolio_url
     profile.github_url = payload.github_url
     profile.linkedin_url = payload.linkedin_url
+    profile.project_demo_urls = payload.project_demo_urls
     profile.visibility = payload.visibility
     profile.bio = payload.bio
     update_candidate_score(db, current_user)

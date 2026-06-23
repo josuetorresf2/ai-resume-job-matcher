@@ -38,6 +38,7 @@ class Candidate(Base):
     portfolio_url: Mapped[str] = mapped_column(String(255), default="")
     github_url: Mapped[str] = mapped_column(String(255), default="")
     linkedin_url: Mapped[str] = mapped_column(String(255), default="")
+    project_demo_urls: Mapped[str] = mapped_column(Text, default="")
     visibility: Mapped[str] = mapped_column(String(64), default="private")
     completeness_score: Mapped[int] = mapped_column(Integer, default=0)
     bio: Mapped[str] = mapped_column(Text, default="")
