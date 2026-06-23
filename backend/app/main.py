@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 from .analysis import ai_analysis, build_recruiter_summary
 from .config import get_settings
 from .database import Base, engine, get_db
-from .models import Analysis, Candidate, JobPost, Recruiter, Resume, User
+from .models import Analysis, Candidate, JobPost, JobReport, Recruiter, Resume, User
 from .resume_parser import extract_pdf_text, extract_text_file
+from .security import company_email_matches_website, hash_password, is_valid_email, is_valid_website
 from .schemas import (
+    AdminCompanyReview,
     AnalysisCreate,
     AnalysisDetail,
     AnalysisResult,
@@ -19,12 +21,15 @@ from .schemas import (
     CandidateProfileUpdate,
     HealthResponse,
     JobPostCreate,
+    JobPublishResponse,
+    JobReportCreate,
     JobPostResponse,
     JobPostUpdate,
     JobDashboardItem,
     LoginRequest,
     MatchCreate,
     MatchReviewUpdate,
+    PreferenceUpdate,
     RankedCandidateMatch,
     RecruiterDashboardResponse,
     RecruiterProfileResponse,
@@ -33,7 +38,10 @@ from .schemas import (
     ResumeResponse,
     ResumeUpdate,
     UserResponse,
+    VerificationRequest,
+    VerificationResponse,
 )
+from .trust import assess_job_quality, assess_job_safety, candidate_completeness_score, recruiter_trust_score
 
 
 settings = get_settings()
@@ -57,6 +65,12 @@ def initialize_database() -> None:
                 "experience_level": "TEXT DEFAULT ''",
                 "required_skills": "TEXT DEFAULT ''",
                 "nice_to_have_skills": "TEXT DEFAULT ''",
+                "status": "TEXT DEFAULT 'draft'",
+                "spam_score": "INTEGER DEFAULT 0",
+                "spam_reasons": "TEXT DEFAULT '[]'",
+                "quality_score": "INTEGER DEFAULT 0",
+                "quality_tips": "TEXT DEFAULT '[]'",
+                "reports_count": "INTEGER DEFAULT 0",
             }
             for column_name, ddl in job_columns.items():
                 if column_name not in columns:
@@ -76,6 +90,48 @@ def initialize_database() -> None:
             for column_name, ddl in analysis_columns.items():
                 if column_name not in columns:
                     connection.execute(text(f"ALTER TABLE analyses ADD COLUMN {column_name} {ddl}"))
+        if "users" in table_names:
+            columns = {column["name"] for column in inspect(engine).get_columns("users")}
+            user_columns = {
+                "password_hash": "TEXT DEFAULT ''",
+                "language": "TEXT DEFAULT 'en'",
+                "verification_status": "TEXT DEFAULT 'unverified'",
+                "verification_channel": "TEXT DEFAULT 'email'",
+                "low_bandwidth": "INTEGER DEFAULT 0",
+            }
+            for column_name, ddl in user_columns.items():
+                if column_name not in columns:
+                    connection.execute(text(f"ALTER TABLE users ADD COLUMN {column_name} {ddl}"))
+        if "candidates" in table_names:
+            columns = {column["name"] for column in inspect(engine).get_columns("candidates")}
+            candidate_columns = {
+                "experience": "TEXT DEFAULT ''",
+                "education": "TEXT DEFAULT ''",
+                "portfolio_url": "TEXT DEFAULT ''",
+                "github_url": "TEXT DEFAULT ''",
+                "linkedin_url": "TEXT DEFAULT ''",
+                "visibility": "TEXT DEFAULT 'private'",
+                "completeness_score": "INTEGER DEFAULT 0",
+            }
+            for column_name, ddl in candidate_columns.items():
+                if column_name not in columns:
+                    connection.execute(text(f"ALTER TABLE candidates ADD COLUMN {column_name} {ddl}"))
+        if "recruiters" in table_names:
+            columns = {column["name"] for column in inspect(engine).get_columns("recruiters")}
+            recruiter_columns = {
+                "website": "TEXT DEFAULT ''",
+                "country": "TEXT DEFAULT ''",
+                "city": "TEXT DEFAULT ''",
+                "industry": "TEXT DEFAULT ''",
+                "company_size": "TEXT DEFAULT ''",
+                "description": "TEXT DEFAULT ''",
+                "contact_email": "TEXT DEFAULT ''",
+                "company_status": "TEXT DEFAULT 'pending_review'",
+                "trust_score": "INTEGER DEFAULT 0",
+            }
+            for column_name, ddl in recruiter_columns.items():
+                if column_name not in columns:
+                    connection.execute(text(f"ALTER TABLE recruiters ADD COLUMN {column_name} {ddl}"))
 
 
 initialize_database()
@@ -112,6 +168,11 @@ def require_role(user: User, role: str) -> None:
         raise forbidden(f"Only {role}s can perform this action.")
 
 
+def require_admin(user: User) -> None:
+    if user.role != "admin":
+        raise forbidden("Only admins can perform this action.")
+
+
 def read_json_list(value: str) -> list[str]:
     try:
         data = json.loads(value or "[]")
@@ -134,6 +195,62 @@ def job_analysis_text(job_post: JobPost) -> str:
             job_post.description,
         ]
     )
+
+
+def company_profile_complete(profile: Recruiter) -> bool:
+    return all(
+        [
+            profile.company.strip(),
+            profile.website.strip(),
+            profile.country.strip(),
+            profile.city.strip(),
+            profile.industry.strip(),
+            profile.company_size.strip(),
+            profile.description.strip(),
+            profile.contact_email.strip(),
+        ]
+    )
+
+
+def update_candidate_score(db: Session, user: User) -> None:
+    profile = db.query(Candidate).filter(Candidate.user_id == user.id).one()
+    has_resume = db.query(Resume).filter(Resume.candidate_user_id == user.id).first() is not None
+    profile.completeness_score = candidate_completeness_score(
+        has_resume,
+        profile.skills,
+        profile.experience,
+        profile.education,
+        [profile.portfolio_url, profile.github_url, profile.linkedin_url],
+        user.language,
+    )
+
+
+def update_recruiter_score(db: Session, user: User) -> None:
+    profile = db.query(Recruiter).filter(Recruiter.user_id == user.id).one()
+    low_spam_jobs = not db.query(JobPost).filter(JobPost.recruiter_user_id == user.id, JobPost.spam_score >= 70).first()
+    profile.trust_score = recruiter_trust_score(
+        user.verification_status == "verified",
+        profile.company_status == "verified",
+        company_profile_complete(profile),
+        low_spam_jobs,
+    )
+
+
+def assess_and_apply_job_scores(job: JobPost, recruiter: Recruiter) -> None:
+    company_complete = company_profile_complete(recruiter)
+    spam_score, spam_reasons = assess_job_safety(job.description, company_complete)
+    quality_score, quality_tips = assess_job_quality(
+        job.title,
+        job.description,
+        job.required_skills,
+        job.salary_range,
+        company_complete,
+        spam_score,
+    )
+    job.spam_score = spam_score
+    job.spam_reasons = json.dumps(spam_reasons)
+    job.quality_score = quality_score
+    job.quality_tips = json.dumps(quality_tips)
 
 
 def serialize_analysis(row: Analysis, include_private: bool = False) -> AnalysisResult:
@@ -160,6 +277,30 @@ def serialize_analysis(row: Analysis, include_private: bool = False) -> Analysis
     )
 
 
+def serialize_job(job: JobPost) -> JobPostResponse:
+    return JobPostResponse(
+        id=job.id,
+        recruiter_user_id=job.recruiter_user_id,
+        title=job.title,
+        company=job.company,
+        location=job.location,
+        work_mode=job.work_mode,
+        salary_range=job.salary_range,
+        experience_level=job.experience_level,
+        required_skills=job.required_skills,
+        nice_to_have_skills=job.nice_to_have_skills,
+        description=job.description,
+        status=job.status,
+        spam_score=job.spam_score,
+        spam_reasons=read_json_list(job.spam_reasons),
+        quality_score=job.quality_score,
+        quality_tips=read_json_list(job.quality_tips),
+        reports_count=job.reports_count,
+        created_at=job.created_at,
+        updated_at=job.updated_at,
+    )
+
+
 def serialize_analysis_detail(row: Analysis, include_private: bool = False) -> AnalysisDetail:
     result = serialize_analysis(row, include_private=include_private)
     return AnalysisDetail(
@@ -172,9 +313,12 @@ def serialize_analysis_detail(row: Analysis, include_private: bool = False) -> A
 def serialize_ranked_match(row: Analysis) -> RankedCandidateMatch:
     result = serialize_analysis(row, include_private=True)
     profile = row.resume.candidate_user.candidate
+    candidate_name = row.resume.candidate_user.name
+    if profile and profile.visibility == "private" and row.recruiter_status != "Shortlisted":
+        candidate_name = "Private candidate"
     return RankedCandidateMatch(
         **result.model_dump(),
-        candidate_name=row.resume.candidate_user.name,
+        candidate_name=candidate_name,
         candidate_headline=profile.headline if profile else "",
         resume_title=row.resume.title,
     )
@@ -187,16 +331,29 @@ def health() -> HealthResponse:
 
 @app.post("/auth/mock-login", response_model=UserResponse)
 def mock_login(payload: LoginRequest, db: Session = Depends(get_db)) -> UserResponse:
+    if not is_valid_email(payload.email):
+        raise HTTPException(status_code=400, detail="Use a valid non-temporary email address.")
     user = db.query(User).filter(User.email == payload.email).one_or_none()
     if user is None:
-        user = User(name=payload.name, email=payload.email, role=payload.role)
+        user = User(
+            name=payload.name,
+            email=payload.email,
+            password_hash=hash_password(payload.password),
+            role=payload.role,
+            language=payload.language,
+            verification_channel=payload.verification_channel,
+        )
         db.add(user)
         db.commit()
         db.refresh(user)
     elif user.role != payload.role:
         raise HTTPException(status_code=400, detail="This email is already registered with a different role.")
+    elif user.password_hash and user.password_hash != hash_password(payload.password):
+        raise HTTPException(status_code=401, detail="Incorrect password.")
     else:
         user.name = payload.name
+        user.language = payload.language
+        user.verification_channel = payload.verification_channel
 
     if user.role == "candidate" and user.candidate is None:
         db.add(Candidate(user_id=user.id))
@@ -205,6 +362,43 @@ def mock_login(payload: LoginRequest, db: Session = Depends(get_db)) -> UserResp
     db.commit()
     db.refresh(user)
     return user
+
+
+@app.put("/me/preferences", response_model=UserResponse)
+def update_preferences(
+    payload: PreferenceUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    current_user.language = payload.language
+    current_user.low_bandwidth = payload.low_bandwidth
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@app.post("/auth/request-verification", response_model=VerificationResponse)
+def request_verification(
+    payload: VerificationRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VerificationResponse:
+    current_user.verification_channel = payload.channel
+    db.commit()
+    return VerificationResponse(status="sent", message=f"Verification placeholder sent by {payload.channel}.")
+
+
+@app.post("/auth/verify-placeholder", response_model=UserResponse)
+def verify_placeholder(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    current_user.verification_status = "verified"
+    if current_user.role == "recruiter":
+        update_recruiter_score(db, current_user)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
 
 @app.get("/me", response_model=UserResponse)
@@ -232,7 +426,14 @@ def update_candidate_profile(
     profile = db.query(Candidate).filter(Candidate.user_id == current_user.id).one()
     profile.headline = payload.headline
     profile.skills = payload.skills
+    profile.experience = payload.experience
+    profile.education = payload.education
+    profile.portfolio_url = payload.portfolio_url
+    profile.github_url = payload.github_url
+    profile.linkedin_url = payload.linkedin_url
+    profile.visibility = payload.visibility
     profile.bio = payload.bio
+    update_candidate_score(db, current_user)
     db.commit()
     db.refresh(profile)
     return profile
@@ -258,6 +459,20 @@ def update_recruiter_profile(
     profile = db.query(Recruiter).filter(Recruiter.user_id == current_user.id).one()
     profile.company = payload.company
     profile.title = payload.title
+    profile.website = payload.website
+    profile.country = payload.country
+    profile.city = payload.city
+    profile.industry = payload.industry
+    profile.company_size = payload.company_size
+    profile.description = payload.description
+    profile.contact_email = payload.contact_email
+    if profile.website and not is_valid_website(profile.website):
+        raise HTTPException(status_code=400, detail="Company website must be a valid http(s) URL.")
+    if profile.contact_email and not is_valid_email(profile.contact_email):
+        raise HTTPException(status_code=400, detail="Company contact email must be valid.")
+    if profile.website and profile.contact_email and not company_email_matches_website(profile.contact_email, profile.website):
+        profile.company_status = "pending_review"
+    update_recruiter_score(db, current_user)
     db.commit()
     db.refresh(profile)
     return profile
@@ -272,6 +487,7 @@ def create_resume(
     require_role(current_user, "candidate")
     row = Resume(candidate_user_id=current_user.id, title=payload.title, resume_text=payload.resume_text)
     db.add(row)
+    update_candidate_score(db, current_user)
     db.commit()
     db.refresh(row)
     return row
@@ -303,6 +519,7 @@ def update_resume(
         row.title = payload.title
     if payload.resume_text is not None:
         row.resume_text = payload.resume_text
+    update_candidate_score(db, current_user)
     db.commit()
     db.refresh(row)
     return row
@@ -315,6 +532,7 @@ def create_job_post(
     db: Session = Depends(get_db),
 ) -> JobPostResponse:
     require_role(current_user, "recruiter")
+    recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id).one()
     row = JobPost(
         recruiter_user_id=current_user.id,
         title=payload.title,
@@ -327,15 +545,18 @@ def create_job_post(
         nice_to_have_skills=payload.nice_to_have_skills,
         description=payload.description,
     )
+    assess_and_apply_job_scores(row, recruiter)
     db.add(row)
+    update_recruiter_score(db, current_user)
     db.commit()
     db.refresh(row)
-    return row
+    return serialize_job(row)
 
 
 @app.get("/job-posts", response_model=list[JobPostResponse])
 def list_job_posts(db: Session = Depends(get_db)) -> list[JobPostResponse]:
-    return db.query(JobPost).order_by(JobPost.updated_at.desc()).all()
+    rows = db.query(JobPost).filter(JobPost.status == "published").order_by(JobPost.updated_at.desc()).all()
+    return [serialize_job(row) for row in rows]
 
 
 @app.get("/job-posts/mine", response_model=list[JobPostResponse])
@@ -344,7 +565,8 @@ def list_my_job_posts(
     db: Session = Depends(get_db),
 ) -> list[JobPostResponse]:
     require_role(current_user, "recruiter")
-    return db.query(JobPost).filter(JobPost.recruiter_user_id == current_user.id).order_by(JobPost.updated_at.desc()).all()
+    rows = db.query(JobPost).filter(JobPost.recruiter_user_id == current_user.id).order_by(JobPost.updated_at.desc()).all()
+    return [serialize_job(row) for row in rows]
 
 
 @app.put("/job-posts/{job_post_id}", response_model=JobPostResponse)
@@ -378,9 +600,42 @@ def update_job_post(
         row.nice_to_have_skills = payload.nice_to_have_skills
     if payload.description is not None:
         row.description = payload.description
+    recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id).one()
+    assess_and_apply_job_scores(row, recruiter)
+    update_recruiter_score(db, current_user)
     db.commit()
     db.refresh(row)
-    return row
+    return serialize_job(row)
+
+
+@app.post("/job-posts/{job_post_id}/publish", response_model=JobPublishResponse)
+def publish_job_post(
+    job_post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> JobPublishResponse:
+    require_role(current_user, "recruiter")
+    row = db.get(JobPost, job_post_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Job post not found.")
+    if row.recruiter_user_id != current_user.id:
+        raise forbidden("Recruiters can only publish their own job posts.")
+    recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id).one()
+    assess_and_apply_job_scores(row, recruiter)
+    if current_user.verification_status != "verified":
+        raise forbidden("Verify your account before publishing jobs.")
+    if recruiter.company_status != "verified":
+        raise forbidden("Company profile must be verified before publishing public jobs.")
+    if row.spam_score >= 70:
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "This job looks unsafe and cannot be published yet.", "fixes": read_json_list(row.spam_reasons)},
+        )
+    row.status = "published"
+    update_recruiter_score(db, current_user)
+    db.commit()
+    db.refresh(row)
+    return JobPublishResponse(**serialize_job(row).model_dump(), published=True)
 
 
 @app.delete("/job-posts/{job_post_id}")
@@ -428,6 +683,12 @@ def get_recruiter_dashboard(
                 required_skills=job.required_skills,
                 nice_to_have_skills=job.nice_to_have_skills,
                 description=job.description,
+                status=job.status,
+                spam_score=job.spam_score,
+                spam_reasons=read_json_list(job.spam_reasons),
+                quality_score=job.quality_score,
+                quality_tips=read_json_list(job.quality_tips),
+                reports_count=job.reports_count,
                 created_at=job.created_at,
                 updated_at=job.updated_at,
                 candidates_matched=len(analyses),
@@ -459,6 +720,82 @@ def list_ranked_candidates(
     return [serialize_ranked_match(row) for row in rows]
 
 
+@app.post("/job-posts/{job_post_id}/report")
+def report_job_post(
+    job_post_id: int,
+    payload: JobReportCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    require_role(current_user, "candidate")
+    job = db.get(JobPost, job_post_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job post not found.")
+    db.add(JobReport(job_post_id=job.id, candidate_user_id=current_user.id, reason=payload.reason))
+    job.reports_count += 1
+    db.commit()
+    return {"status": "reported"}
+
+
+@app.get("/admin/companies", response_model=list[RecruiterProfileResponse])
+def list_companies_for_review(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[RecruiterProfileResponse]:
+    require_admin(current_user)
+    return db.query(Recruiter).order_by(Recruiter.id.desc()).all()
+
+
+@app.put("/admin/companies/{recruiter_user_id}/review", response_model=RecruiterProfileResponse)
+def review_company(
+    recruiter_user_id: int,
+    payload: AdminCompanyReview,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RecruiterProfileResponse:
+    require_admin(current_user)
+    recruiter_user = db.get(User, recruiter_user_id)
+    if recruiter_user is None or recruiter_user.role != "recruiter" or recruiter_user.recruiter is None:
+        raise HTTPException(status_code=404, detail="Recruiter company profile not found.")
+    recruiter_user.recruiter.company_status = payload.status
+    update_recruiter_score(db, recruiter_user)
+    db.commit()
+    db.refresh(recruiter_user.recruiter)
+    return recruiter_user.recruiter
+
+
+@app.get("/admin/flagged-jobs", response_model=list[JobPostResponse])
+def list_flagged_jobs(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[JobPostResponse]:
+    require_admin(current_user)
+    rows = (
+        db.query(JobPost)
+        .filter((JobPost.spam_score >= 70) | (JobPost.reports_count > 0))
+        .order_by(JobPost.updated_at.desc())
+        .all()
+    )
+    return [serialize_job(row) for row in rows]
+
+
+@app.delete("/admin/jobs/{job_post_id}")
+def admin_remove_job(
+    job_post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    require_admin(current_user)
+    row = db.get(JobPost, job_post_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Job post not found.")
+    db.query(Analysis).filter(Analysis.job_post_id == row.id).delete()
+    db.query(JobReport).filter(JobReport.job_post_id == row.id).delete()
+    db.delete(row)
+    db.commit()
+    return {"status": "removed"}
+
+
 @app.post("/matches", response_model=AnalysisResult)
 def create_match(
     payload: MatchCreate,
@@ -480,12 +817,13 @@ def create_match(
         raise forbidden("Unsupported user role.")
 
     job_text = job_analysis_text(job_post)
-    result = ai_analysis(settings, resume.resume_text, job_text)
+    result = ai_analysis(settings, resume.resume_text, job_text, language=current_user.language)
     recruiter_summary = build_recruiter_summary(
         resume.resume_text,
         job_text,
         result["match_score"],
         result["missing_skills"],
+        language=current_user.language,
     )
     row = Analysis(
         resume_id=resume.id,

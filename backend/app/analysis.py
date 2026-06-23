@@ -59,6 +59,7 @@ def build_recruiter_summary(
     job_description: str,
     match_score: int,
     missing_skills: list[str],
+    language: str = "en",
 ) -> dict[str, Any]:
     resume_skills = _extract_skills(resume_text)
     job_skills = _extract_skills(job_description)
@@ -85,6 +86,20 @@ def build_recruiter_summary(
 
     resume_summary = "Candidate resume mentions " + (", ".join(strongest_skills[:6]) if strongest_skills else "transferable experience") + "."
     good_fit = "Matches key role signals: " + (", ".join(strongest_skills[:6]) if strongest_skills else "general experience and project history") + "."
+    if language == "es":
+        concerns = []
+        if missing_skills:
+            concerns.append("Brechas de habilidades para validar: " + ", ".join(missing_skills[:5]) + ".")
+        if match_score < 70:
+            concerns.append("La evidencia del resume puede no estar suficientemente alineada con este puesto.")
+        if not concerns:
+            concerns.append("No hay preocupaciones principales en el texto del resume; valida profundidad en la entrevista.")
+        questions = []
+        for skill in (missing_skills[:3] or strongest_skills[:3] or ["este puesto"]):
+            questions.append(f"Describe un proyecto reciente donde usaste o aprendiste {skill}.")
+        questions.append("Que resultado medible de tu resume se conecta mejor con este puesto?")
+        resume_summary = "El resume menciona " + (", ".join(strongest_skills[:6]) if strongest_skills else "experiencia transferible") + "."
+        good_fit = "Coincide con senales clave del puesto: " + (", ".join(strongest_skills[:6]) if strongest_skills else "experiencia general e historial de proyectos") + "."
 
     return {
         "strongest_skills": strongest_skills,
@@ -96,7 +111,7 @@ def build_recruiter_summary(
     }
 
 
-def heuristic_analysis(resume_text: str, job_description: str) -> dict[str, Any]:
+def heuristic_analysis(resume_text: str, job_description: str, language: str = "en") -> dict[str, Any]:
     resume_skills = _extract_skills(resume_text)
     job_skills = _extract_skills(job_description)
     missing = sorted(job_skills - resume_skills)
@@ -110,33 +125,43 @@ def heuristic_analysis(resume_text: str, job_description: str) -> dict[str, Any]
         score = round((len(resume_words & job_words) / max(len(job_words), 1)) * 100)
 
     improvements = []
-    if missing:
-        improvements.append("Add concrete examples that show experience with: " + ", ".join(missing[:6]) + ".")
-    improvements.append("Mirror the job description language where it accurately reflects your experience.")
-    improvements.append("Add measurable outcomes such as revenue, time saved, accuracy, latency, or adoption.")
-    improvements.append("Move the most relevant skills and projects into the top third of the resume.")
+    if language == "es":
+        if missing:
+            improvements.append("Agrega ejemplos concretos que demuestren experiencia con: " + ", ".join(missing[:6]) + ".")
+        improvements.append("Usa lenguaje parecido al job post cuando refleje tu experiencia real.")
+        improvements.append("Agrega resultados medibles como ingresos, tiempo ahorrado, precision, latencia o adopcion.")
+        improvements.append("Mueve las habilidades y proyectos mas relevantes al primer tercio del resume.")
+        summary = "Analisis local completado porque no hay una API key de OpenAI configurada."
+    else:
+        if missing:
+            improvements.append("Add concrete examples that show experience with: " + ", ".join(missing[:6]) + ".")
+        improvements.append("Mirror the job description language where it accurately reflects your experience.")
+        improvements.append("Add measurable outcomes such as revenue, time saved, accuracy, latency, or adoption.")
+        improvements.append("Move the most relevant skills and projects into the top third of the resume.")
+        summary = "Heuristic analysis completed locally because no OpenAI API key was configured."
 
     return {
         "match_score": max(0, min(100, score)),
         "missing_skills": missing,
         "strongest_skills": sorted(resume_skills & job_skills),
         "improvements": improvements,
-        "summary": "Heuristic analysis completed locally because no OpenAI API key was configured.",
+        "summary": summary,
         "source": "heuristic",
     }
 
 
-def ai_analysis(settings: Settings, resume_text: str, job_description: str) -> dict[str, Any]:
+def ai_analysis(settings: Settings, resume_text: str, job_description: str, language: str = "en") -> dict[str, Any]:
     if not settings.openai_api_key or settings.openai_api_key == "your_api_key_here":
-        return heuristic_analysis(resume_text, job_description)
+        return heuristic_analysis(resume_text, job_description, language=language)
 
     client = OpenAI(api_key=settings.openai_api_key)
+    language_name = "Spanish" if language == "es" else "English"
     prompt = {
         "role": "user",
         "content": (
             "Analyze this resume against the job description. Return strict JSON with keys "
             "match_score (integer 0-100), missing_skills (array of strings), improvements "
-            "(array of strings), and summary (short string).\n\n"
+            f"(array of strings), and summary (short string). Write user-facing text in {language_name}.\n\n"
             f"Resume:\n{resume_text}\n\nJob description:\n{job_description}"
         ),
     }
@@ -163,6 +188,10 @@ def ai_analysis(settings: Settings, resume_text: str, job_description: str) -> d
         data["source"] = "openai"
         return data
     except (OpenAIError, json.JSONDecodeError, KeyError, TypeError, ValueError):
-        fallback = heuristic_analysis(resume_text, job_description)
-        fallback["summary"] = "OpenAI analysis failed, so a local heuristic analysis was used."
+        fallback = heuristic_analysis(resume_text, job_description, language=language)
+        fallback["summary"] = (
+            "OpenAI fallo, asi que se uso un analisis local."
+            if language == "es"
+            else "OpenAI analysis failed, so a local heuristic analysis was used."
+        )
         return fallback

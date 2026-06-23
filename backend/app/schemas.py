@@ -10,7 +10,10 @@ class HealthResponse(BaseModel):
 class LoginRequest(BaseModel):
     name: str = Field(..., min_length=2)
     email: str = Field(..., min_length=5)
-    role: str = Field(..., pattern="^(candidate|recruiter)$")
+    password: str = Field(..., min_length=8)
+    role: str = Field(..., pattern="^(candidate|recruiter|admin)$")
+    language: str = Field(default="en", pattern="^(en|es)$")
+    verification_channel: str = Field(default="email", pattern="^(email|sms|whatsapp)$")
 
 
 class UserResponse(BaseModel):
@@ -18,13 +21,37 @@ class UserResponse(BaseModel):
     name: str
     email: str
     role: str
+    language: str
+    verification_status: str
+    verification_channel: str
+    low_bandwidth: int
 
     model_config = {"from_attributes": True}
+
+
+class PreferenceUpdate(BaseModel):
+    language: str = Field(..., pattern="^(en|es)$")
+    low_bandwidth: int = 0
+
+
+class VerificationRequest(BaseModel):
+    channel: str = Field(..., pattern="^(email|sms|whatsapp)$")
+
+
+class VerificationResponse(BaseModel):
+    status: str
+    message: str
 
 
 class CandidateProfileUpdate(BaseModel):
     headline: str = ""
     skills: str = ""
+    experience: str = ""
+    education: str = ""
+    portfolio_url: str = ""
+    github_url: str = ""
+    linkedin_url: str = ""
+    visibility: str = Field(default="private", pattern="^(private|visible_to_verified_recruiters|public)$")
     bio: str = ""
 
 
@@ -38,11 +65,20 @@ class CandidateProfileResponse(CandidateProfileUpdate):
 class RecruiterProfileUpdate(BaseModel):
     company: str = ""
     title: str = ""
+    website: str = ""
+    country: str = ""
+    city: str = ""
+    industry: str = ""
+    company_size: str = ""
+    description: str = ""
+    contact_email: str = ""
 
 
 class RecruiterProfileResponse(RecruiterProfileUpdate):
     id: int
     user_id: int
+    company_status: str
+    trust_score: int
 
     model_config = {"from_attributes": True}
 
@@ -104,10 +140,28 @@ class JobPostResponse(BaseModel):
     required_skills: str
     nice_to_have_skills: str
     description: str
+    status: str
+    spam_score: int
+    spam_reasons: list[str] = []
+    quality_score: int
+    quality_tips: list[str] = []
+    reports_count: int
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class JobPublishResponse(JobPostResponse):
+    published: bool
+
+
+class JobReportCreate(BaseModel):
+    reason: str = Field(..., min_length=10)
+
+
+class AdminCompanyReview(BaseModel):
+    status: str = Field(..., pattern="^(verified|rejected)$")
 
 
 class MatchCreate(BaseModel):

@@ -1,10 +1,14 @@
-export type Role = "candidate" | "recruiter";
+export type Role = "candidate" | "recruiter" | "admin";
 
 export type User = {
   id: number;
   name: string;
   email: string;
   role: Role;
+  language: "en" | "es";
+  verification_status: "unverified" | "verified";
+  verification_channel: "email" | "sms" | "whatsapp";
+  low_bandwidth: number;
 };
 
 export type CandidateProfile = {
@@ -12,6 +16,13 @@ export type CandidateProfile = {
   user_id: number;
   headline: string;
   skills: string;
+  experience: string;
+  education: string;
+  portfolio_url: string;
+  github_url: string;
+  linkedin_url: string;
+  visibility: "private" | "visible_to_verified_recruiters" | "public";
+  completeness_score?: number;
   bio: string;
 };
 
@@ -20,6 +31,15 @@ export type RecruiterProfile = {
   user_id: number;
   company: string;
   title: string;
+  website: string;
+  country: string;
+  city: string;
+  industry: string;
+  company_size: string;
+  description: string;
+  contact_email: string;
+  company_status: "pending_review" | "verified" | "rejected";
+  trust_score: number;
 };
 
 export type Resume = {
@@ -43,6 +63,12 @@ export type JobPost = {
   required_skills: string;
   nice_to_have_skills: string;
   description: string;
+  status: "draft" | "published";
+  spam_score: number;
+  spam_reasons: string[];
+  quality_score: number;
+  quality_tips: string[];
+  reports_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -125,13 +151,37 @@ async function parseResponse<T>(response: Response, fallback: string): Promise<T
   throw new Error(message || fallback);
 }
 
-export async function mockLogin(name: string, email: string, role: Role): Promise<User> {
+export async function mockLogin(
+  name: string,
+  email: string,
+  password: string,
+  role: Role,
+  language: "en" | "es",
+  verificationChannel: "email" | "sms" | "whatsapp",
+): Promise<User> {
   const response = await fetch(`${API_URL}/auth/mock-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, role }),
+    body: JSON.stringify({ name, email, password, role, language, verification_channel: verificationChannel }),
   });
   return parseResponse<User>(response, "Could not start mock session.");
+}
+
+export async function verifyAccount(user: User): Promise<User> {
+  const response = await fetch(`${API_URL}/auth/verify-placeholder`, {
+    method: "POST",
+    headers: sessionHeaders(user),
+  });
+  return parseResponse<User>(response, "Could not verify account.");
+}
+
+export async function updatePreferences(user: User, language: "en" | "es", lowBandwidth: number): Promise<User> {
+  const response = await fetch(`${API_URL}/me/preferences`, {
+    method: "PUT",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ language, low_bandwidth: lowBandwidth }),
+  });
+  return parseResponse<User>(response, "Could not update preferences.");
 }
 
 export async function getCandidateProfile(user: User): Promise<CandidateProfile> {
@@ -221,6 +271,23 @@ export async function deleteJobPost(user: User, jobPostId: number): Promise<void
     headers: sessionHeaders(user),
   });
   await parseResponse<{ status: string }>(response, "Could not delete job post.");
+}
+
+export async function publishJobPost(user: User, jobPostId: number): Promise<JobPost & { published: boolean }> {
+  const response = await fetch(`${API_URL}/job-posts/${jobPostId}/publish`, {
+    method: "POST",
+    headers: sessionHeaders(user),
+  });
+  return parseResponse<JobPost & { published: boolean }>(response, "Could not publish job post.");
+}
+
+export async function reportJobPost(user: User, jobPostId: number, reason: string): Promise<void> {
+  const response = await fetch(`${API_URL}/job-posts/${jobPostId}/report`, {
+    method: "POST",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ reason }),
+  });
+  await parseResponse<{ status: string }>(response, "Could not report job post.");
 }
 
 export async function listJobPosts(): Promise<JobPost[]> {

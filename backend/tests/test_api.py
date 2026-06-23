@@ -12,8 +12,11 @@ from app.main import app  # noqa: E402
 client = TestClient(app)
 
 
-def login(email: str, role: str, name: str = "Test User") -> dict:
-    response = client.post("/auth/mock-login", json={"name": name, "email": email, "role": role})
+def login(email: str, role: str, name: str = "Test User", language: str = "en") -> dict:
+    response = client.post(
+        "/auth/mock-login",
+        json={"name": name, "email": email, "password": "StrongPass123", "role": role, "language": language},
+    )
     assert response.status_code == 200
     return response.json()
 
@@ -32,7 +35,14 @@ def create_resume(user: dict, text: str = "Python FastAPI React Docker SQL resum
     return response.json()
 
 
-def create_job(user: dict, description: str = "Hiring Python FastAPI React Docker SQL AWS engineer.") -> dict:
+def create_job(
+    user: dict,
+    description: str = (
+        "We are hiring a software engineer to build reliable web products for small teams. "
+        "Responsibilities include shipping FastAPI services, React interfaces, SQL-backed workflows, "
+        "tests, documentation, and production support. Candidates should communicate clearly and care about maintainable systems."
+    ),
+) -> dict:
     response = client.post(
         "/job-posts",
         headers=headers(user),
@@ -56,6 +66,15 @@ def test_health():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_login_rejects_fake_looking_email():
+    response = client.post(
+        "/auth/mock-login",
+        json={"name": "Fake User", "email": "person@mailinator.com", "password": "StrongPass123", "role": "candidate"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Use a valid non-temporary email address."
 
 
 def test_candidate_cannot_edit_recruiter_job_post():
@@ -164,7 +183,7 @@ def test_recruiter_dashboard_and_ranked_candidates():
     ranked_data = ranked.json()
     assert len(ranked_data) == 2
     assert ranked_data[0]["match_score"] >= ranked_data[1]["match_score"]
-    assert ranked_data[0]["candidate_name"]
+    assert ranked_data[0]["candidate_name"] == "Private candidate"
     assert "strongest_skills" in ranked_data[0]
 
 
@@ -203,6 +222,139 @@ def test_recruiter_can_delete_only_own_job_posts():
     assert denied.json()["detail"] == "Recruiters can only delete their own job posts."
     assert deleted.status_code == 200
     assert deleted.json() == {"status": "deleted"}
+
+
+def test_recruiter_must_verify_email_and_company_before_publishing():
+    recruiter = login("recruiter-publish@example.com", "recruiter", "Recruiter")
+    admin = login("admin-publish@example.com", "admin", "Admin")
+    job = create_job(recruiter)
+
+    blocked_unverified_email = client.post(f"/job-posts/{job['id']}/publish", headers=headers(recruiter))
+    assert blocked_unverified_email.status_code == 403
+    assert blocked_unverified_email.json()["detail"] == "Verify your account before publishing jobs."
+
+    client.post("/auth/verify-placeholder", headers=headers(recruiter))
+    blocked_unverified_company = client.post(f"/job-posts/{job['id']}/publish", headers=headers(recruiter))
+    assert blocked_unverified_company.status_code == 403
+    assert blocked_unverified_company.json()["detail"] == "Company profile must be verified before publishing public jobs."
+
+    client.put(
+        "/recruiter/profile",
+        headers=headers(recruiter),
+        json={
+            "company": "Acme",
+            "title": "Founder",
+            "website": "https://acme.com",
+            "country": "Ecuador",
+            "city": "Quito",
+            "industry": "Software",
+            "company_size": "1-10",
+            "description": "Small software team hiring responsibly.",
+            "contact_email": "jobs@acme.com",
+        },
+    )
+    reviewed = client.put(f"/admin/companies/{recruiter['id']}/review", headers=headers(admin), json={"status": "verified"})
+    published = client.post(f"/job-posts/{job['id']}/publish", headers=headers(recruiter))
+
+    assert reviewed.status_code == 200
+    assert reviewed.json()["company_status"] == "verified"
+    assert published.status_code == 200
+    assert published.json()["published"] is True
+    assert published.json()["status"] == "published"
+
+
+def test_unverified_company_can_save_draft_but_public_list_only_shows_published_jobs():
+    recruiter = login("recruiter-draft@example.com", "recruiter", "Recruiter")
+    job = create_job(recruiter)
+    public_jobs = client.get("/job-posts")
+
+    assert job["status"] == "draft"
+    assert all(item["id"] != job["id"] for item in public_jobs.json())
+
+
+def test_spammy_job_is_blocked_from_publishing():
+    recruiter = login("recruiter-spam@example.com", "recruiter", "Recruiter")
+    admin = login("admin-spam@example.com", "admin", "Admin")
+    client.post("/auth/verify-placeholder", headers=headers(recruiter))
+    client.put(
+        "/recruiter/profile",
+        headers=headers(recruiter),
+        json={
+            "company": "Acme",
+            "title": "Recruiter",
+            "website": "https://acme.com",
+            "country": "Ecuador",
+            "city": "Quito",
+            "industry": "Software",
+            "company_size": "1-10",
+            "description": "Small software team hiring responsibly.",
+            "contact_email": "jobs@acme.com",
+        },
+    )
+    client.put(f"/admin/companies/{recruiter['id']}/review", headers=headers(admin), json={"status": "verified"})
+    spam_job = create_job(recruiter, "WhatsApp only. Guaranteed income. Send money. http://one.test http://two.test")
+
+    response = client.post(f"/job-posts/{spam_job['id']}/publish", headers=headers(recruiter))
+    flagged = client.get("/admin/flagged-jobs", headers=headers(admin))
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["message"] == "This job looks unsafe and cannot be published yet."
+    assert any(item["id"] == spam_job["id"] for item in flagged.json())
+
+
+def test_candidate_can_report_suspicious_published_job():
+    candidate = login("candidate-report@example.com", "candidate", "Candidate")
+    recruiter = login("recruiter-report@example.com", "recruiter", "Recruiter")
+    admin = login("admin-report@example.com", "admin", "Admin")
+    client.post("/auth/verify-placeholder", headers=headers(recruiter))
+    client.put(
+        "/recruiter/profile",
+        headers=headers(recruiter),
+        json={
+            "company": "Acme",
+            "title": "Recruiter",
+            "website": "https://acme.com",
+            "country": "Ecuador",
+            "city": "Quito",
+            "industry": "Software",
+            "company_size": "1-10",
+            "description": "Small software team hiring responsibly.",
+            "contact_email": "jobs@acme.com",
+        },
+    )
+    client.put(f"/admin/companies/{recruiter['id']}/review", headers=headers(admin), json={"status": "verified"})
+    job = create_job(recruiter)
+    client.post(f"/job-posts/{job['id']}/publish", headers=headers(recruiter))
+
+    report = client.post(
+        f"/job-posts/{job['id']}/report",
+        headers=headers(candidate),
+        json={"reason": "The recruiter asked for payment outside the platform."},
+    )
+    flagged = client.get("/admin/flagged-jobs", headers=headers(admin))
+
+    assert report.status_code == 200
+    assert report.json() == {"status": "reported"}
+    assert any(item["id"] == job["id"] and item["reports_count"] == 1 for item in flagged.json())
+
+
+def test_admin_routes_are_protected():
+    candidate = login("candidate-admin-denied@example.com", "candidate", "Candidate")
+    response = client.get("/admin/companies", headers=headers(candidate))
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Only admins can perform this action."
+
+
+def test_spanish_matching_returns_spanish_fallback_text():
+    candidate = login("candidate-spanish@example.com", "candidate", "Candidate", language="es")
+    recruiter = login("recruiter-spanish@example.com", "recruiter", "Recruiter")
+    resume = create_resume(candidate)
+    job = create_job(recruiter)
+
+    response = client.post("/matches", headers=headers(candidate), json={"resume_id": resume["id"], "job_post_id": job["id"]})
+
+    assert response.status_code == 200
+    assert "Analisis local" in response.json()["summary"]
 
 
 def test_extract_text_resume_upload():

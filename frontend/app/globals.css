@@ -163,6 +163,13 @@ h3 {
   color: var(--ink);
 }
 
+.compact-select {
+  border-radius: 999px;
+  min-height: 38px;
+  padding: 8px 32px 8px 13px;
+  width: auto;
+}
+
 .metrics-grid {
   display: grid;
   gap: 14px;
@@ -266,6 +273,32 @@ h3 {
 .field {
   display: block;
   margin-bottom: 14px;
+}
+
+.two-column-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.trust-strip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 14px;
+  padding: 10px;
+}
+
+.trust-strip span {
+  background: rgba(45, 212, 191, 0.1);
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 9px;
 }
 
 textarea {

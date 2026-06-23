@@ -11,7 +11,12 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(128), default="")
     role: Mapped[str] = mapped_column(String(32), index=True)
+    language: Mapped[str] = mapped_column(String(8), default="en")
+    verification_status: Mapped[str] = mapped_column(String(32), default="unverified")
+    verification_channel: Mapped[str] = mapped_column(String(32), default="email")
+    low_bandwidth: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     candidate: Mapped["Candidate | None"] = relationship(back_populates="user", uselist=False)
@@ -27,6 +32,13 @@ class Candidate(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
     headline: Mapped[str] = mapped_column(String(180), default="")
     skills: Mapped[str] = mapped_column(Text, default="")
+    experience: Mapped[str] = mapped_column(Text, default="")
+    education: Mapped[str] = mapped_column(Text, default="")
+    portfolio_url: Mapped[str] = mapped_column(String(255), default="")
+    github_url: Mapped[str] = mapped_column(String(255), default="")
+    linkedin_url: Mapped[str] = mapped_column(String(255), default="")
+    visibility: Mapped[str] = mapped_column(String(64), default="private")
+    completeness_score: Mapped[int] = mapped_column(Integer, default=0)
     bio: Mapped[str] = mapped_column(Text, default="")
 
     user: Mapped[User] = relationship(back_populates="candidate")
@@ -39,6 +51,15 @@ class Recruiter(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
     company: Mapped[str] = mapped_column(String(180), default="")
     title: Mapped[str] = mapped_column(String(120), default="")
+    website: Mapped[str] = mapped_column(String(255), default="")
+    country: Mapped[str] = mapped_column(String(120), default="")
+    city: Mapped[str] = mapped_column(String(120), default="")
+    industry: Mapped[str] = mapped_column(String(120), default="")
+    company_size: Mapped[str] = mapped_column(String(80), default="")
+    description: Mapped[str] = mapped_column(Text, default="")
+    contact_email: Mapped[str] = mapped_column(String(255), default="")
+    company_status: Mapped[str] = mapped_column(String(32), default="pending_review")
+    trust_score: Mapped[int] = mapped_column(Integer, default=0)
 
     user: Mapped[User] = relationship(back_populates="recruiter")
 
@@ -71,6 +92,12 @@ class JobPost(Base):
     required_skills: Mapped[str] = mapped_column(Text, default="")
     nice_to_have_skills: Mapped[str] = mapped_column(Text, default="")
     description: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(32), default="draft")
+    spam_score: Mapped[int] = mapped_column(Integer, default=0)
+    spam_reasons: Mapped[str] = mapped_column(Text, default="[]")
+    quality_score: Mapped[int] = mapped_column(Integer, default=0)
+    quality_tips: Mapped[str] = mapped_column(Text, default="[]")
+    reports_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -103,3 +130,13 @@ class Analysis(Base):
 
     resume: Mapped[Resume] = relationship(back_populates="analyses")
     job_post: Mapped[JobPost] = relationship(back_populates="analyses")
+
+
+class JobReport(Base):
+    __tablename__ = "job_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    job_post_id: Mapped[int] = mapped_column(ForeignKey("job_posts.id"), index=True)
+    candidate_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    reason: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
