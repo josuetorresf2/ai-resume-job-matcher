@@ -54,7 +54,7 @@ const sampleJob =
 const COPY = {
   en: {
     eyebrow: "Free AI recruiting platform",
-    title: "New Free Talent Pool",
+    title: "FairHire",
     subtitle: "Accessible recruiting workflows for candidates, recruiters, and small companies in underserved markets.",
     lightMode: "Light mode",
     darkMode: "Dark mode",
@@ -166,7 +166,7 @@ const COPY = {
   },
   es: {
     eyebrow: "Plataforma gratuita de reclutamiento con IA",
-    title: "New Free Talent Pool",
+    title: "FairHire",
     subtitle: "Flujos de reclutamiento accesibles para candidatos, reclutadores y pequenas empresas en mercados desatendidos.",
     lightMode: "Modo claro",
     darkMode: "Modo oscuro",

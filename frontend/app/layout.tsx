@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "New Free Talent Pool",
+  title: "FairHire",
   description: "A free AI-powered recruiting platform for candidates and small companies in underserved markets.",
 };
 

@@ -1,4 +1,4 @@
-# New Free Talent Pool
+# FairHire
 
 A free AI-powered recruiting platform for candidates and small companies in underserved markets.
 
