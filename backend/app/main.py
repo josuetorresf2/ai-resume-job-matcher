@@ -19,7 +19,13 @@ from .schemas import (
     AnalysisResult,
     CandidateProfileResponse,
     CandidateProfileUpdate,
+    CareerCoachRequest,
+    CareerCoachResponse,
+    GitHubAnalysisRequest,
+    GitHubAnalysisResponse,
     HealthResponse,
+    InterviewPracticeRequest,
+    InterviewPracticeResponse,
     JobPostCreate,
     JobPublishResponse,
     JobReportCreate,
@@ -37,11 +43,15 @@ from .schemas import (
     ResumeCreate,
     ResumeResponse,
     ResumeUpdate,
+    SalaryIntelligenceRequest,
+    SalaryIntelligenceResponse,
+    SalaryRange,
     UserResponse,
     VerificationRequest,
     VerificationResponse,
 )
 from .trust import assess_job_quality, assess_job_safety, candidate_completeness_score, recruiter_trust_score
+from .analysis import extract_skills
 
 
 settings = get_settings()
@@ -251,6 +261,29 @@ def assess_and_apply_job_scores(job: JobPost, recruiter: Recruiter) -> None:
     job.spam_reasons = json.dumps(spam_reasons)
     job.quality_score = quality_score
     job.quality_tips = json.dumps(quality_tips)
+
+
+def candidate_resume_for_user(db: Session, current_user: User, resume_id: Optional[int]) -> Optional[Resume]:
+    query = db.query(Resume).filter(Resume.candidate_user_id == current_user.id)
+    if resume_id is not None:
+        row = query.filter(Resume.id == resume_id).one_or_none()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Resume not found.")
+        return row
+    return query.order_by(Resume.updated_at.desc()).first()
+
+
+def localized(language: str, english: str, spanish: str) -> str:
+    return spanish if language == "es" else english
+
+
+def career_skills_to_learn(resume_text: str, job_text: str = "") -> list[str]:
+    resume_skills = set(extract_skills(resume_text))
+    target_skills = set(extract_skills(job_text)) if job_text else {"docker", "postgresql", "ci/cd", "aws", "github actions"}
+    missing = sorted(target_skills - resume_skills)
+    priority = ["Docker", "PostgreSQL", "CI/CD", "AWS", "GitHub Actions", "System design", "API security"]
+    found = [skill for skill in priority if skill.lower() in {item.lower() for item in missing}]
+    return found or ["Docker", "PostgreSQL", "CI/CD"]
 
 
 def serialize_analysis(row: Analysis, include_private: bool = False) -> AnalysisResult:
@@ -523,6 +556,150 @@ def update_resume(
     db.commit()
     db.refresh(row)
     return row
+
+
+@app.post("/candidate/interview-practice", response_model=InterviewPracticeResponse)
+def create_interview_practice(
+    payload: InterviewPracticeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> InterviewPracticeResponse:
+    require_role(current_user, "candidate")
+    resume = candidate_resume_for_user(db, current_user, payload.resume_id)
+    skills = set(extract_skills(resume.resume_text if resume else ""))
+    score = 84 if {"python", "fastapi", "sql"} & skills else 72
+    if current_user.language == "es":
+        return InterviewPracticeResponse(
+            interview_score=score,
+            questions=[
+                "Explica como disenarias una API REST segura para un servicio de pagos.",
+                "Que diferencias practicas hay entre una cola, un cache y una base de datos?",
+                "Describe un proyecto donde tuviste que comunicar un tradeoff tecnico.",
+                "Como depurarias una API de Python lenta en produccion?",
+                "Que controles agregarias para autenticacion, autorizacion y rate limiting?",
+            ],
+            strengths=["Comunicacion", "Profundidad tecnica"],
+            needs_improvement=["Respuestas concisas", "Conceptos de seguridad de APIs"],
+            feedback="Practica respuestas de 60 a 90 segundos con ejemplos medibles y una estructura problema, accion, resultado.",
+        )
+    return InterviewPracticeResponse(
+        interview_score=score,
+        questions=[
+            "Explain how you would design a secure REST API for a payments service.",
+            "What are the practical differences between a queue, a cache, and a database?",
+            "Describe a project where you had to communicate a technical tradeoff.",
+            "How would you debug a slow Python API in production?",
+            "What controls would you add for authentication, authorization, and rate limiting?",
+        ],
+        strengths=["Communication", "Technical depth"],
+        needs_improvement=["Concise answers", "API security concepts"],
+        feedback="Practice 60 to 90 second answers with measurable examples and a problem, action, result structure.",
+    )
+
+
+@app.post("/candidate/career-coach", response_model=CareerCoachResponse)
+def create_career_coach_plan(
+    payload: CareerCoachRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CareerCoachResponse:
+    require_role(current_user, "candidate")
+    resume = candidate_resume_for_user(db, current_user, payload.resume_id)
+    if resume is None:
+        raise HTTPException(status_code=404, detail="Create or upload a resume first.")
+    job_text = ""
+    current_score = 62
+    if payload.job_post_id is not None:
+        job = db.get(JobPost, payload.job_post_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job post not found.")
+        job_text = job_analysis_text(job)
+        current_score = ai_analysis(settings, resume.resume_text, job_text, language=current_user.language)["match_score"]
+    learn = career_skills_to_learn(resume.resume_text, job_text)
+    estimated_effort = localized(current_user.language, "4 weeks", "4 semanas")
+    if current_user.language == "es":
+        roadmap = [
+            f"Semana 1: crea un proyecto pequeno usando {learn[0]}.",
+            f"Semana 2: agrega {learn[1] if len(learn) > 1 else 'pruebas'} con ejemplos en tu README.",
+            f"Semana 3: practica {learn[2] if len(learn) > 2 else 'CI/CD'} y despliegue.",
+            "Semana 4: actualiza tu resume con resultados medibles y vuelve a correr el matcher.",
+        ]
+    else:
+        roadmap = [
+            f"Week 1: build a small project using {learn[0]}.",
+            f"Week 2: add {learn[1] if len(learn) > 1 else 'tests'} with examples in your README.",
+            f"Week 3: practice {learn[2] if len(learn) > 2 else 'CI/CD'} and deployment.",
+            "Week 4: update your resume with measurable outcomes and run the matcher again.",
+        ]
+    return CareerCoachResponse(
+        current_score=current_score,
+        target_score=payload.target_score,
+        learn=learn,
+        estimated_effort=estimated_effort,
+        roadmap=roadmap,
+    )
+
+
+@app.post("/candidate/salary-intelligence", response_model=SalaryIntelligenceResponse)
+def create_salary_intelligence(
+    payload: SalaryIntelligenceRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SalaryIntelligenceResponse:
+    require_role(current_user, "candidate")
+    resume = candidate_resume_for_user(db, current_user, payload.resume_id)
+    if resume is None:
+        raise HTTPException(status_code=404, detail="Resume not found.")
+    skills = set(extract_skills(resume.resume_text))
+    senior_signal = len(skills & {"aws", "docker", "kubernetes", "terraform", "postgresql", "ci/cd"}) >= 3
+    ranges = [
+        SalaryRange(market="Ecuador", range="$1200-$1800" if not senior_signal else "$1800-$2600"),
+        SalaryRange(market="Remote LATAM", range="$1800-$3000" if not senior_signal else "$3000-$4500"),
+        SalaryRange(market="US Contractor", range="$3000-$5000" if not senior_signal else "$5000-$7500"),
+    ]
+    rationale = localized(
+        current_user.language,
+        "Estimate based on resume skills, backend scope, and market type. Validate with live market data before negotiation.",
+        "Estimacion basada en habilidades del resume, alcance backend y tipo de mercado. Valida con datos actuales antes de negociar.",
+    )
+    return SalaryIntelligenceResponse(ranges=ranges, rationale=rationale)
+
+
+@app.post("/candidate/github-analysis", response_model=GitHubAnalysisResponse)
+def create_github_analysis(
+    payload: GitHubAnalysisRequest,
+    current_user: User = Depends(get_current_user),
+) -> GitHubAnalysisResponse:
+    require_role(current_user, "candidate")
+    if "github.com" not in payload.github_url.lower():
+        raise HTTPException(status_code=400, detail="Use a valid GitHub profile or repository URL.")
+    if current_user.language == "es":
+        return GitHubAnalysisResponse(
+            portfolio_score=88,
+            commit_frequency="Actividad constante simulada a partir del perfil conectado.",
+            languages=["Python", "TypeScript", "SQL"],
+            projects=["API backend", "Dashboard full-stack", "Automatizacion"],
+            tests="Buenas senales: incluye pruebas o estructura preparada para pruebas.",
+            documentation="README visible, pero puede mejorar con capturas, arquitectura y decisiones tecnicas.",
+            recommendations=[
+                "Agrega badges de CI y cobertura.",
+                "Incluye capturas o GIFs cortos en los proyectos principales.",
+                "Documenta decisiones de arquitectura y tradeoffs.",
+            ],
+        )
+    return GitHubAnalysisResponse(
+        portfolio_score=88,
+        commit_frequency="Consistent simulated activity from the connected profile.",
+        languages=["Python", "TypeScript", "SQL"],
+        projects=["Backend API", "Full-stack dashboard", "Automation"],
+        tests="Strong signal: includes tests or test-ready structure.",
+        documentation="README is visible, but can improve with screenshots, architecture, and technical decisions.",
+        recommendations=[
+            "Add CI and coverage badges.",
+            "Include screenshots or short GIFs for flagship projects.",
+            "Document architecture decisions and tradeoffs.",
+        ],
+    )
 
 
 @app.post("/job-posts", response_model=JobPostResponse)

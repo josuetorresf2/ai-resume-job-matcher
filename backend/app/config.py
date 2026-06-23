@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "AI Resume & Job Matcher"
+    app_name: str = "New Free Talent Pool"
     database_url: str = "sqlite:///./resume_matcher.db"
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4o-mini"

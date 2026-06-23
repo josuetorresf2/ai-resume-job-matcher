@@ -223,3 +223,58 @@ class JobDashboardItem(JobPostResponse):
 class RecruiterDashboardResponse(BaseModel):
     job_posts: list[JobDashboardItem]
     total_shortlisted: int
+
+
+class InterviewPracticeRequest(BaseModel):
+    role: str = "Backend Engineer"
+    resume_id: Optional[int] = None
+
+
+class InterviewPracticeResponse(BaseModel):
+    interview_score: int
+    questions: list[str]
+    strengths: list[str]
+    needs_improvement: list[str]
+    feedback: str
+
+
+class CareerCoachRequest(BaseModel):
+    resume_id: Optional[int] = None
+    job_post_id: Optional[int] = None
+    target_score: int = Field(default=85, ge=0, le=100)
+
+
+class CareerCoachResponse(BaseModel):
+    current_score: int
+    target_score: int
+    learn: list[str]
+    estimated_effort: str
+    roadmap: list[str]
+
+
+class SalaryIntelligenceRequest(BaseModel):
+    resume_id: int
+
+
+class SalaryRange(BaseModel):
+    market: str
+    range: str
+
+
+class SalaryIntelligenceResponse(BaseModel):
+    ranges: list[SalaryRange]
+    rationale: str
+
+
+class GitHubAnalysisRequest(BaseModel):
+    github_url: str = Field(..., min_length=5)
+
+
+class GitHubAnalysisResponse(BaseModel):
+    portfolio_score: int
+    commit_frequency: str
+    languages: list[str]
+    projects: list[str]
+    tests: str
+    documentation: str
+    recommendations: list[str]

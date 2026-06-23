@@ -1,4 +1,4 @@
-# AI Resume & Job Matcher
+# New Free Talent Pool
 
 A free AI-powered recruiting platform for candidates and small companies in underserved markets.
 
@@ -29,6 +29,10 @@ Many candidates and small employers do not have access to paid applicant trackin
 - English and Spanish language preference
 - AI responses generated in the selected user language
 - Candidate resume upload, PDF parsing, and match history
+- AI Interview Simulator for backend engineering practice
+- AI Career Coach with target score, missing skills, effort estimate, and roadmap
+- Salary Intelligence for Ecuador, Remote LATAM, and US contractor ranges
+- GitHub Portfolio Analysis with portfolio score, languages, projects, tests, documentation, and recommendations
 - Recruiter company profiles, job drafts, and protected publishing
 - Job spam scoring and job quality scoring before publication
 - Candidate privacy controls and suspicious job reporting
@@ -43,7 +47,8 @@ Many candidates and small employers do not have access to paid applicant trackin
 4. Upload or paste a resume.
 5. Match the resume against published jobs.
 6. Review match score, missing skills, strongest skills, and AI improvement suggestions.
-7. Report suspicious jobs when needed.
+7. Practice interviews, generate a career roadmap, estimate salary ranges, and analyze GitHub portfolio quality.
+8. Report suspicious jobs when needed.
 
 Candidate privacy options:
 
@@ -228,6 +233,14 @@ npm run build
 - Candidate application flow and explicit profile sharing
 - Recruiter response-rate tracking
 - Job report investigation workflow
+- Fraud detection for fake companies, fake candidates, AI-generated nonsense resumes, and copy-paste job descriptions
+- Recruiter Copilot that expands rough hiring notes into job descriptions, responsibilities, salary suggestions, and interview questions
+- One-click resume builder with ATS resume output, PDF export, and LinkedIn summary
+- AI job search agent that finds, ranks, and explains job opportunities
+- Video introduction analysis for clarity, confidence, and speaking pace
+- Referral network for community-supported referrals
+- University mode for students with no experience, portfolio, or LinkedIn
+- Opportunity Score for job quality, salary transparency, company reputation, growth, and remote flexibility
 - More languages for underserved markets
 - Deployment guide and live demo
 

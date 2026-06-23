@@ -114,6 +114,37 @@ export type RankedCandidateMatch = Analysis & {
   resume_title: string;
 };
 
+export type InterviewPractice = {
+  interview_score: number;
+  questions: string[];
+  strengths: string[];
+  needs_improvement: string[];
+  feedback: string;
+};
+
+export type CareerCoachPlan = {
+  current_score: number;
+  target_score: number;
+  learn: string[];
+  estimated_effort: string;
+  roadmap: string[];
+};
+
+export type SalaryIntelligence = {
+  ranges: { market: string; range: string }[];
+  rationale: string;
+};
+
+export type GitHubAnalysis = {
+  portfolio_score: number;
+  commit_frequency: string;
+  languages: string[];
+  projects: string[];
+  tests: string;
+  documentation: string;
+  recommendations: string[];
+};
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 function sessionHeaders(user?: User | null): HeadersInit {
@@ -336,6 +367,42 @@ export async function createMatch(user: User, resumeId: number, jobPostId: numbe
 export async function listMatches(user: User): Promise<Analysis[]> {
   const response = await fetch(`${API_URL}/matches`, { headers: sessionHeaders(user), cache: "no-store" });
   return parseResponse<Analysis[]>(response, "Could not load match history.");
+}
+
+export async function practiceInterview(user: User, resumeId?: number): Promise<InterviewPractice> {
+  const response = await fetch(`${API_URL}/candidate/interview-practice`, {
+    method: "POST",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ role: "Backend Engineer", resume_id: resumeId }),
+  });
+  return parseResponse<InterviewPractice>(response, "Could not create interview practice.");
+}
+
+export async function getCareerCoachPlan(user: User, resumeId?: number, jobPostId?: number): Promise<CareerCoachPlan> {
+  const response = await fetch(`${API_URL}/candidate/career-coach`, {
+    method: "POST",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ resume_id: resumeId, job_post_id: jobPostId, target_score: 85 }),
+  });
+  return parseResponse<CareerCoachPlan>(response, "Could not create career roadmap.");
+}
+
+export async function getSalaryIntelligence(user: User, resumeId: number): Promise<SalaryIntelligence> {
+  const response = await fetch(`${API_URL}/candidate/salary-intelligence`, {
+    method: "POST",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ resume_id: resumeId }),
+  });
+  return parseResponse<SalaryIntelligence>(response, "Could not estimate salary ranges.");
+}
+
+export async function analyzeGitHub(user: User, githubUrl: string): Promise<GitHubAnalysis> {
+  const response = await fetch(`${API_URL}/candidate/github-analysis`, {
+    method: "POST",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ github_url: githubUrl }),
+  });
+  return parseResponse<GitHubAnalysis>(response, "Could not analyze GitHub portfolio.");
 }
 
 export async function createAnalysis(resumeText: string, jobDescription: string): Promise<Analysis> {

@@ -301,6 +301,47 @@ h3 {
   padding: 6px 9px;
 }
 
+.tool-grid,
+.insight-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.github-field {
+  grid-column: span 2;
+  margin-bottom: 0;
+}
+
+.insight-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.insight-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.insight-card strong {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.insight-card p,
+.insight-card li {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.insight-card ul {
+  margin: 8px 0 14px;
+  padding-left: 18px;
+}
+
 textarea {
   background: rgba(2, 6, 23, 0.42);
   border: 1px solid var(--line);
@@ -789,8 +830,15 @@ textarea:focus {
   .metrics-grid,
   .workspace,
   .role-workspace,
-  .role-grid {
+  .role-grid,
+  .tool-grid,
+  .insight-grid,
+  .two-column-fields {
     grid-template-columns: 1fr;
+  }
+
+  .github-field {
+    grid-column: span 1;
   }
 
   .score-row {

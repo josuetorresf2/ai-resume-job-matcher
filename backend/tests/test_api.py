@@ -357,6 +357,85 @@ def test_spanish_matching_returns_spanish_fallback_text():
     assert "Analisis local" in response.json()["summary"]
 
 
+def test_candidate_ai_interview_simulator():
+    candidate = login("candidate-interview@example.com", "candidate", "Candidate")
+    resume = create_resume(candidate, "Python FastAPI SQL Docker backend engineer resume with APIs.")
+
+    response = client.post("/candidate/interview-practice", headers=headers(candidate), json={"resume_id": resume["id"]})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["interview_score"] == 84
+    assert "Communication" in data["strengths"]
+    assert "API security concepts" in data["needs_improvement"]
+    assert len(data["questions"]) >= 5
+
+
+def test_candidate_career_coach_generates_roadmap():
+    candidate = login("candidate-coach@example.com", "candidate", "Candidate")
+    recruiter = login("recruiter-coach@example.com", "recruiter", "Recruiter")
+    resume = create_resume(candidate, "Python FastAPI SQL backend resume.")
+    job = create_job(
+        recruiter,
+        "Backend role requiring Python, FastAPI, Docker, PostgreSQL, CI/CD, testing, and API security for production services.",
+    )
+
+    response = client.post(
+        "/candidate/career-coach",
+        headers=headers(candidate),
+        json={"resume_id": resume["id"], "job_post_id": job["id"], "target_score": 85},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["target_score"] == 85
+    assert "Docker" in data["learn"]
+    assert data["estimated_effort"] == "4 weeks"
+    assert len(data["roadmap"]) == 4
+
+
+def test_candidate_salary_intelligence():
+    candidate = login("candidate-salary@example.com", "candidate", "Candidate")
+    resume = create_resume(candidate, "Python FastAPI SQL backend engineer resume.")
+
+    response = client.post("/candidate/salary-intelligence", headers=headers(candidate), json={"resume_id": resume["id"]})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ranges"][0] == {"market": "Ecuador", "range": "$1200-$1800"}
+    assert data["ranges"][1] == {"market": "Remote LATAM", "range": "$1800-$3000"}
+    assert data["ranges"][2] == {"market": "US Contractor", "range": "$3000-$5000"}
+
+
+def test_candidate_github_analysis_generates_portfolio_score():
+    candidate = login("candidate-github@example.com", "candidate", "Candidate")
+
+    response = client.post(
+        "/candidate/github-analysis",
+        headers=headers(candidate),
+        json={"github_url": "https://github.com/example/backend-portfolio"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["portfolio_score"] == 88
+    assert "Python" in data["languages"]
+    assert data["recommendations"]
+
+
+def test_recruiter_cannot_use_candidate_ai_tools():
+    recruiter = login("recruiter-ai-denied@example.com", "recruiter", "Recruiter")
+
+    response = client.post(
+        "/candidate/github-analysis",
+        headers=headers(recruiter),
+        json={"github_url": "https://github.com/example/backend-portfolio"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Only candidates can perform this action."
+
+
 def test_extract_text_resume_upload():
     response = client.post(
         "/resume-text",
