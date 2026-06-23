@@ -477,6 +477,24 @@ function RoleSelection({
             <p>{c.loginHelp}</p>
           </div>
         </div>
+        <div className="role-picker" aria-label={c.chooseWorkspace}>
+          <button
+            className={selectedRole === "recruiter" ? "role-choice role-choice-active" : "role-choice"}
+            disabled={loading}
+            onClick={() => setSelectedRole("recruiter")}
+          >
+            <span>{c.recruiterRole}</span>
+            <small>{c.recruiterPerms}</small>
+          </button>
+          <button
+            className={selectedRole === "candidate" ? "role-choice role-choice-active" : "role-choice"}
+            disabled={loading}
+            onClick={() => setSelectedRole("candidate")}
+          >
+            <span>{c.candidateRole}</span>
+            <small>{c.candidatePerms}</small>
+          </button>
+        </div>
         <label className="field">
           <span>{c.name}</span>
           <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Alex Morgan" />
@@ -517,20 +535,6 @@ function RoleSelection({
           </div>
         ) : null}
         <div className="role-actions">
-          <button
-            className={selectedRole === "recruiter" ? "primary-action" : "secondary-action"}
-            disabled={loading}
-            onClick={() => setSelectedRole("recruiter")}
-          >
-            {c.recruiterRole}
-          </button>
-          <button
-            className={selectedRole === "candidate" ? "primary-action" : "secondary-action"}
-            disabled={loading}
-            onClick={() => setSelectedRole("candidate")}
-          >
-            {c.candidateRole}
-          </button>
           <button className="primary-action" disabled={!canLogin} onClick={() => selectedRole && onLogin(selectedRole)}>
             {loading ? <span className="spinner" /> : null}
             {c.continueAs} {selectedRole ? (selectedRole === "candidate" ? c.candidate : c.recruiter) : c.selectedRole}
