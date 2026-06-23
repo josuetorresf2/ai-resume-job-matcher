@@ -55,6 +55,44 @@ const sampleResume =
 const sampleJob =
   "Hiring a software engineer with Python, FastAPI, React, Docker, SQL, AWS, GitHub Actions, and experience building production REST APIs.";
 
+type SupportedLanguage = "en" | "es" | "pt" | "fr" | "sw";
+type TargetMarket = "latin-america" | "africa" | "global-remote";
+
+const LANGUAGE_OPTIONS: Array<{ value: SupportedLanguage; label: string }> = [
+  { value: "en", label: "English" },
+  { value: "es", label: "Espanol" },
+  { value: "pt", label: "Portugues" },
+  { value: "fr", label: "Francais" },
+  { value: "sw", label: "Kiswahili" },
+];
+
+const MARKET_OPTIONS: Array<{ value: TargetMarket; labelKey: "marketLatam" | "marketAfrica" | "marketGlobal" }> = [
+  { value: "latin-america", labelKey: "marketLatam" },
+  { value: "africa", labelKey: "marketAfrica" },
+  { value: "global-remote", labelKey: "marketGlobal" },
+];
+
+const MARKET_JOBS: Record<TargetMarket, Array<{ role: string; tags: string[]; demand: number; signal: string }>> = {
+  "latin-america": [
+    { role: "Remote Python Backend Developer", tags: ["python", "backend", "fastapi", "api"], demand: 86, signal: "Remote LATAM contractor demand is strong." },
+    { role: "React Frontend Developer", tags: ["react", "frontend", "javascript", "typescript"], demand: 82, signal: "Small companies need portfolio-ready UI builders." },
+    { role: "Bilingual Customer Support", tags: ["support", "customer", "english", "spanish"], demand: 74, signal: "English plus Spanish is a practical advantage." },
+    { role: "Sales Development Representative", tags: ["sales", "crm", "sdr", "english"], demand: 71, signal: "Remote sales roles often hire across LATAM." },
+  ],
+  africa: [
+    { role: "Mobile Money Support Specialist", tags: ["support", "fintech", "mobile money", "customer"], demand: 84, signal: "Fintech and mobile money teams need verified talent." },
+    { role: "Junior Data Analyst", tags: ["data", "excel", "sql", "analytics"], demand: 79, signal: "Data roles are growing across local and remote teams." },
+    { role: "Python Automation Developer", tags: ["python", "automation", "backend", "api"], demand: 76, signal: "Automation helps small companies operate with lean teams." },
+    { role: "Community Operations Associate", tags: ["operations", "community", "support", "trust"], demand: 73, signal: "Trust, safety, and marketplace ops are a strong fit." },
+  ],
+  "global-remote": [
+    { role: "Full-stack Software Engineer", tags: ["software", "react", "python", "full-stack"], demand: 88, signal: "Remote teams reward proof of shipping complete products." },
+    { role: "AI Workflow Specialist", tags: ["ai", "automation", "operations", "prompt"], demand: 81, signal: "Small companies need AI workflows without enterprise tools." },
+    { role: "Technical Virtual Assistant", tags: ["support", "operations", "documentation", "admin"], demand: 72, signal: "Documentation and reliable communication matter." },
+    { role: "Product Designer", tags: ["design", "figma", "ui", "ux"], demand: 69, signal: "Lean startups look for practical product design portfolios." },
+  ],
+};
+
 const COPY = {
   en: {
     eyebrow: "Free AI recruiting platform",
@@ -82,10 +120,29 @@ const COPY = {
     selectedRole: "selected role",
     formHint: "Select a role and create an account. Verification is a portfolio placeholder for email, SMS, or WhatsApp.",
     permissionModel: "Permission model",
+    can: "Can",
+    cannot: "Cannot",
     candidate: "Candidate",
     recruiter: "Recruiter",
     candidatePerms: "Can edit their own profile and resumes, run matches, practice interviews, and view career intelligence.",
     recruiterPerms: "Can edit their own profile and job posts, view match results tied to their jobs, and cannot modify candidate resumes.",
+    candidateCannot: "Cannot edit recruiter job posts, company profiles, or private recruiter notes.",
+    recruiterCannot: "Cannot edit candidate resumes, profiles, contact details, or personal data.",
+    marketPreviewTitle: "Explore jobs before signing up",
+    marketPreviewHelp: "Search by role and region to see where FairHire can help candidates and small companies first.",
+    searchJobs: "What kind of job are you looking for?",
+    jobSearchPlaceholder: "React, Python, customer support, sales...",
+    targetMarket: "Target market",
+    marketSignals: "Market signals",
+    popularSearches: "Popular searches",
+    openRoles: "available role types",
+    remoteFriendly: "remote-friendly",
+    salarySignal: "salary transparency",
+    localHiring: "local hiring",
+    noMarketMatch: "No exact preview yet. Try software, support, data, sales, or design.",
+    marketLatam: "Latin America",
+    marketAfrica: "Africa",
+    marketGlobal: "Global remote",
     sessionIssue: "Session issue",
     enterName: "Enter your name before continuing.",
     enterEmail: "Enter a valid email before continuing.",
@@ -201,10 +258,29 @@ const COPY = {
     selectedRole: "rol seleccionado",
     formHint: "Selecciona un rol y crea una cuenta. La verificacion es un placeholder para email, SMS o WhatsApp.",
     permissionModel: "Modelo de permisos",
+    can: "Puede",
+    cannot: "No puede",
     candidate: "Candidato",
     recruiter: "Reclutador",
     candidatePerms: "Puede editar su perfil y resumes, correr matches, practicar entrevistas y ver inteligencia de carrera.",
     recruiterPerms: "Puede editar su perfil y empleos, ver matches de sus empleos y no puede modificar resumes de candidatos.",
+    candidateCannot: "No puede editar empleos, perfiles de empresa ni notas privadas del reclutador.",
+    recruiterCannot: "No puede editar resumes, perfiles, datos de contacto ni informacion personal de candidatos.",
+    marketPreviewTitle: "Explora empleos antes de registrarte",
+    marketPreviewHelp: "Busca por rol y region para ver donde FairHire puede ayudar primero a candidatos y pequenas empresas.",
+    searchJobs: "Que tipo de empleo buscas?",
+    jobSearchPlaceholder: "React, Python, soporte, ventas...",
+    targetMarket: "Mercado objetivo",
+    marketSignals: "Senales del mercado",
+    popularSearches: "Busquedas populares",
+    openRoles: "tipos de roles disponibles",
+    remoteFriendly: "apto para remoto",
+    salarySignal: "transparencia salarial",
+    localHiring: "contratacion local",
+    noMarketMatch: "No hay preview exacto todavia. Prueba software, soporte, data, ventas o diseno.",
+    marketLatam: "Latinoamerica",
+    marketAfrica: "Africa",
+    marketGlobal: "Remoto global",
     sessionIssue: "Problema de sesion",
     enterName: "Ingresa tu nombre antes de continuar.",
     enterEmail: "Ingresa un email valido antes de continuar.",
@@ -296,6 +372,73 @@ const COPY = {
   },
 };
 
+const LOCALIZED_COPY = {
+  ...COPY,
+  pt: {
+    ...COPY.en,
+    eyebrow: "Plataforma gratuita de recrutamento com IA",
+    subtitle: "Fluxos de recrutamento acessiveis para candidatos, recrutadores e pequenas empresas em mercados desatendidos.",
+    chooseWorkspace: "Escolha seu espaco",
+    loginHelp: "Crie uma conta com funcao, senha, idioma e canal de verificacao.",
+    recruiterRole: "Sou recrutador",
+    candidateRole: "Sou candidato",
+    continueAs: "Continuar como",
+    selectedRole: "funcao selecionada",
+    formHint: "Escolha primeiro seu perfil. Depois voce informa seus dados para criar a conta.",
+    marketPreviewTitle: "Explore vagas antes de se cadastrar",
+    marketPreviewHelp: "Pesquise por cargo e regiao para ver onde a FairHire pode ajudar candidatos e pequenas empresas.",
+    searchJobs: "Que tipo de vaga voce procura?",
+    targetMarket: "Mercado alvo",
+    marketSignals: "Sinais do mercado",
+    popularSearches: "Buscas populares",
+    marketLatam: "America Latina",
+    marketAfrica: "Africa",
+    marketGlobal: "Remoto global",
+  },
+  fr: {
+    ...COPY.en,
+    eyebrow: "Plateforme gratuite de recrutement avec IA",
+    subtitle: "Des parcours de recrutement accessibles pour les candidats, recruteurs et petites entreprises dans les marches mal desservis.",
+    chooseWorkspace: "Choisissez votre espace",
+    loginHelp: "Creez un compte avec role, mot de passe, langue et canal de verification.",
+    recruiterRole: "Je suis recruteur",
+    candidateRole: "Je suis candidat",
+    continueAs: "Continuer comme",
+    selectedRole: "role selectionne",
+    formHint: "Choisissez d'abord votre profil. Ensuite, ajoutez vos informations pour creer le compte.",
+    marketPreviewTitle: "Explorez des emplois avant l'inscription",
+    marketPreviewHelp: "Recherchez par role et region pour voir ou FairHire peut aider les candidats et petites entreprises.",
+    searchJobs: "Quel type d'emploi cherchez-vous?",
+    targetMarket: "Marche cible",
+    marketSignals: "Signaux du marche",
+    popularSearches: "Recherches populaires",
+    marketLatam: "Amerique latine",
+    marketAfrica: "Afrique",
+    marketGlobal: "Remote global",
+  },
+  sw: {
+    ...COPY.en,
+    eyebrow: "Jukwaa la bure la ajira kwa AI",
+    subtitle: "Njia rahisi za ajira kwa wagombea, waajiri, na kampuni ndogo katika masoko yasiyohudumiwa vya kutosha.",
+    chooseWorkspace: "Chagua nafasi yako",
+    loginHelp: "Fungua akaunti kwa jukumu, nenosiri, lugha, na njia ya uthibitisho.",
+    recruiterRole: "Mimi ni mwajiri",
+    candidateRole: "Mimi ni mgombea",
+    continueAs: "Endelea kama",
+    selectedRole: "jukumu lililochaguliwa",
+    formHint: "Chagua kwanza jukumu lako. Kisha ongeza taarifa zako kuunda akaunti.",
+    marketPreviewTitle: "Angalia kazi kabla ya kujisajili",
+    marketPreviewHelp: "Tafuta kwa aina ya kazi na eneo ili kuona FairHire inaweza kusaidia wapi kwanza.",
+    searchJobs: "Unatafuta kazi ya aina gani?",
+    targetMarket: "Soko lengwa",
+    marketSignals: "Viashiria vya soko",
+    popularSearches: "Utafutaji maarufu",
+    marketLatam: "Amerika ya Kusini",
+    marketAfrica: "Afrika",
+    marketGlobal: "Remote duniani",
+  },
+};
+
 type Copy = typeof COPY.en;
 
 export default function Home() {
@@ -307,11 +450,13 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [language, setLanguage] = useState<"en" | "es">("en");
+  const [language, setLanguage] = useState<SupportedLanguage>("en");
   const [verificationChannel, setVerificationChannel] = useState<"email" | "sms" | "whatsapp">("email");
+  const [jobSearch, setJobSearch] = useState("");
+  const [targetMarket, setTargetMarket] = useState<TargetMarket>("latin-america");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const c = COPY[user?.language ?? language];
+  const c = LOCALIZED_COPY[user?.language ?? language];
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -350,7 +495,7 @@ export default function Home() {
     setError("");
   }
 
-  async function changeLanguage(nextLanguage: "en" | "es") {
+  async function changeLanguage(nextLanguage: SupportedLanguage) {
     setLanguage(nextLanguage);
     if (!user) return;
     try {
@@ -380,9 +525,12 @@ export default function Home() {
           <p className="subtitle">{c.subtitle}</p>
         </div>
         <div className="topbar-actions">
-          <select className="compact-select" value={user?.language ?? language} onChange={(event) => changeLanguage(event.target.value as "en" | "es")}>
-            <option value="en">English</option>
-            <option value="es">Espanol</option>
+          <select className="compact-select" value={user?.language ?? language} onChange={(event) => changeLanguage(event.target.value as SupportedLanguage)}>
+            {LANGUAGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           <button className="theme-toggle" onClick={() => setTheme((value) => (value === "dark" ? "light" : "dark"))}>
             {theme === "dark" ? c.lightMode : c.darkMode}
@@ -405,6 +553,8 @@ export default function Home() {
           password={password}
           language={language}
           verificationChannel={verificationChannel}
+          jobSearch={jobSearch}
+          targetMarket={targetMarket}
           c={c}
           error={error}
           loading={loading}
@@ -415,6 +565,8 @@ export default function Home() {
           setPassword={setPassword}
           setLanguage={setLanguage}
           setVerificationChannel={setVerificationChannel}
+          setJobSearch={setJobSearch}
+          setTargetMarket={setTargetMarket}
           setSelectedRole={setSelectedRole}
           onLogin={onLogin}
         />
@@ -434,6 +586,8 @@ function RoleSelection({
   password,
   language,
   verificationChannel,
+  jobSearch,
+  targetMarket,
   c,
   error,
   loading,
@@ -444,6 +598,8 @@ function RoleSelection({
   setPassword,
   setLanguage,
   setVerificationChannel,
+  setJobSearch,
+  setTargetMarket,
   setSelectedRole,
   onLogin,
 }: {
@@ -451,8 +607,10 @@ function RoleSelection({
   email: string;
   phoneNumber: string;
   password: string;
-  language: "en" | "es";
+  language: SupportedLanguage;
   verificationChannel: "email" | "sms" | "whatsapp";
+  jobSearch: string;
+  targetMarket: TargetMarket;
   c: Copy;
   error: string;
   loading: boolean;
@@ -461,98 +619,145 @@ function RoleSelection({
   setEmail: (value: string) => void;
   setPhoneNumber: (value: string) => void;
   setPassword: (value: string) => void;
-  setLanguage: (value: "en" | "es") => void;
+  setLanguage: (value: SupportedLanguage) => void;
   setVerificationChannel: (value: "email" | "sms" | "whatsapp") => void;
-  setSelectedRole: (value: Role) => void;
+  setJobSearch: (value: string) => void;
+  setTargetMarket: (value: TargetMarket) => void;
+  setSelectedRole: (value: Role | null) => void;
   onLogin: (role: Role) => Promise<void>;
 }) {
   const canLogin = Boolean(selectedRole) && !loading;
+  const selectedRoleLabel = selectedRole === "candidate" ? c.candidate : c.recruiter;
+  const normalizedSearch = jobSearch.trim().toLowerCase();
+  const marketJobs = MARKET_JOBS[targetMarket];
+  const previewJobs = normalizedSearch
+    ? marketJobs.filter((job) => [job.role, ...job.tags].join(" ").toLowerCase().includes(normalizedSearch))
+    : marketJobs;
+  const visiblePreviewJobs = previewJobs.slice(0, 3);
 
   return (
     <section className="role-grid">
-      <div className="panel role-panel">
+      <div className={selectedRole ? "panel role-panel" : "panel role-panel role-panel-intro"}>
         <div className="panel-header">
           <div>
             <h2>{c.chooseWorkspace}</h2>
-            <p>{c.loginHelp}</p>
+            <p>{selectedRole ? c.loginHelp : c.formHint}</p>
           </div>
         </div>
-        <div className="role-picker" aria-label={c.chooseWorkspace}>
-          <button
-            className={selectedRole === "recruiter" ? "role-choice role-choice-active" : "role-choice"}
-            disabled={loading}
-            onClick={() => setSelectedRole("recruiter")}
-          >
-            <span>{c.recruiterRole}</span>
-            <small>{c.recruiterPerms}</small>
-          </button>
-          <button
-            className={selectedRole === "candidate" ? "role-choice role-choice-active" : "role-choice"}
-            disabled={loading}
-            onClick={() => setSelectedRole("candidate")}
-          >
-            <span>{c.candidateRole}</span>
-            <small>{c.candidatePerms}</small>
-          </button>
-        </div>
-        <label className="field">
-          <span>{c.name}</span>
-          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Alex Morgan" />
-        </label>
-        <label className="field">
-          <span>{c.email}</span>
-          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="alex@example.com" />
-        </label>
-        <label className="field">
-          <span>{c.phoneNumber}</span>
-          <input value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder={c.phoneHint} />
-        </label>
-        <label className="field">
-          <span>{c.password}</span>
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={c.passwordHint} />
-        </label>
-        <div className="two-column-fields">
-          <label className="field">
-            <span>{c.language}</span>
-            <select value={language} onChange={(event) => setLanguage(event.target.value as "en" | "es")}>
-              <option value="en">English</option>
-              <option value="es">Espanol</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>{c.verifyBy}</span>
-            <select value={verificationChannel} onChange={(event) => setVerificationChannel(event.target.value as "email" | "sms" | "whatsapp")}>
-              <option value="email">Email</option>
-              <option value="sms">SMS</option>
-              <option value="whatsapp">WhatsApp</option>
-            </select>
-          </label>
-        </div>
-        {error ? (
-          <div className="error" role="alert">
-            <strong>{c.sessionIssue}</strong>
-            <span>{error}</span>
+        {!selectedRole ? (
+          <div className="role-picker role-picker-intro" aria-label={c.chooseWorkspace}>
+            <button className="role-choice" disabled={loading} onClick={() => setSelectedRole("recruiter")}>
+              <span>{c.recruiterRole}</span>
+              <small>{c.recruiterPerms}</small>
+            </button>
+            <button className="role-choice" disabled={loading} onClick={() => setSelectedRole("candidate")}>
+              <span>{c.candidateRole}</span>
+              <small>{c.candidatePerms}</small>
+            </button>
           </div>
-        ) : null}
-        <div className="role-actions">
-          <button className="primary-action" disabled={!canLogin} onClick={() => selectedRole && onLogin(selectedRole)}>
-            {loading ? <span className="spinner" /> : null}
-            {c.continueAs} {selectedRole ? (selectedRole === "candidate" ? c.candidate : c.recruiter) : c.selectedRole}
-          </button>
-        </div>
-        <p className="form-hint">{c.formHint}</p>
+        ) : (
+          <>
+            <div className="selected-role-summary">
+              <div>
+                <span>{c.selectedRole}</span>
+                <strong>{selectedRoleLabel}</strong>
+              </div>
+              <button className="secondary-action compact-action" disabled={loading} onClick={() => setSelectedRole(null)}>
+                {c.switchRole}
+              </button>
+            </div>
+            <label className="field">
+              <span>{c.name}</span>
+              <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Alex Morgan" />
+            </label>
+            <label className="field">
+              <span>{c.email}</span>
+              <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="alex@example.com" />
+            </label>
+            <label className="field">
+              <span>{c.phoneNumber}</span>
+              <input value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder={c.phoneHint} />
+            </label>
+            <label className="field">
+              <span>{c.password}</span>
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={c.passwordHint} />
+            </label>
+            <div className="two-column-fields">
+              <label className="field">
+                <span>{c.language}</span>
+                <select value={language} onChange={(event) => setLanguage(event.target.value as SupportedLanguage)}>
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>{c.verifyBy}</span>
+                <select value={verificationChannel} onChange={(event) => setVerificationChannel(event.target.value as "email" | "sms" | "whatsapp")}>
+                  <option value="email">Email</option>
+                  <option value="sms">SMS</option>
+                  <option value="whatsapp">WhatsApp</option>
+                </select>
+              </label>
+            </div>
+            {error ? (
+              <div className="error" role="alert">
+                <strong>{c.sessionIssue}</strong>
+                <span>{error}</span>
+              </div>
+            ) : null}
+            <div className="role-actions">
+              <button className="primary-action" disabled={!canLogin} onClick={() => selectedRole && onLogin(selectedRole)}>
+                {loading ? <span className="spinner" /> : null}
+                {c.continueAs} {selectedRoleLabel}
+              </button>
+            </div>
+          </>
+        )}
       </div>
-      <div className="panel permissions-panel">
-        <h2>{c.permissionModel}</h2>
-        <div className="permission-list">
+      <div className="panel market-panel">
+        <div className="panel-header">
           <div>
-            <strong>{c.candidate}</strong>
-            <p>{c.candidatePerms}</p>
+            <h2>{c.marketPreviewTitle}</h2>
+            <p>{c.marketPreviewHelp}</p>
           </div>
-          <div>
-            <strong>{c.recruiter}</strong>
-            <p>{c.recruiterPerms}</p>
-          </div>
+        </div>
+        <label className="field">
+          <span>{c.searchJobs}</span>
+          <input value={jobSearch} onChange={(event) => setJobSearch(event.target.value)} placeholder={c.jobSearchPlaceholder} />
+        </label>
+        <label className="field">
+          <span>{c.targetMarket}</span>
+          <select value={targetMarket} onChange={(event) => setTargetMarket(event.target.value as TargetMarket)}>
+            {MARKET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {c[option.labelKey]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="market-signal-grid">
+          <span>{marketJobs.length} · {c.openRoles}</span>
+          <span>{c.remoteFriendly}</span>
+          <span>{c.salarySignal}</span>
+          <span>{c.localHiring}</span>
+        </div>
+        <div className="job-preview-list">
+          {visiblePreviewJobs.length ? (
+            visiblePreviewJobs.map((job) => (
+              <div className="job-preview-card" key={job.role}>
+                <div>
+                  <strong>{job.role}</strong>
+                  <p>{job.signal}</p>
+                </div>
+                <span>{job.demand}%</span>
+              </div>
+            ))
+          ) : (
+            <p className="empty-preview">{c.noMarketMatch}</p>
+          )}
         </div>
       </div>
     </section>
@@ -1102,7 +1307,7 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
   );
 }
 
-function DashboardMetrics({ latest, itemCount, itemLabel, matchCount, mode, c, language }: { latest: Analysis | null; itemCount: number; itemLabel: string; matchCount: number; mode: string; c: Copy; language: "en" | "es" }) {
+function DashboardMetrics({ latest, itemCount, itemLabel, matchCount, mode, c, language }: { latest: Analysis | null; itemCount: number; itemLabel: string; matchCount: number; mode: string; c: Copy; language: SupportedLanguage }) {
   const average = useMemo(() => latest?.match_score ?? 0, [latest]);
   return (
     <section className="metrics-grid">
@@ -1168,7 +1373,7 @@ function StatusMessages({ error, notice, c }: { error: string; notice: string; c
   );
 }
 
-function MatchResult({ result, c, language }: { result: Analysis | null; c: Copy; language: "en" | "es" }) {
+function MatchResult({ result, c, language }: { result: Analysis | null; c: Copy; language: SupportedLanguage }) {
   if (!result) return <p className="empty">{c.noResults}</p>;
 
   return (
@@ -1221,7 +1426,7 @@ function MatchResult({ result, c, language }: { result: Analysis | null; c: Copy
   );
 }
 
-function MatchHistory({ matches, setCurrent, c, language }: { matches: Analysis[]; setCurrent: (analysis: Analysis) => void; c: Copy; language: "en" | "es" }) {
+function MatchHistory({ matches, setCurrent, c, language }: { matches: Analysis[]; setCurrent: (analysis: Analysis) => void; c: Copy; language: SupportedLanguage }) {
   return (
     <section className="panel history-wide">
       <PanelTitle title={c.history} subtitle={c.historyHelp} />

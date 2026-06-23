@@ -13,7 +13,7 @@ class LoginRequest(BaseModel):
     phone_number: str = ""
     password: str = Field(..., min_length=8)
     role: str = Field(..., pattern="^(candidate|recruiter|admin)$")
-    language: str = Field(default="en", pattern="^(en|es)$")
+    language: str = Field(default="en", pattern="^(en|es|pt|fr|sw)$")
     verification_channel: str = Field(default="email", pattern="^(email|sms|whatsapp)$")
 
 
@@ -33,7 +33,7 @@ class UserResponse(BaseModel):
 
 
 class PreferenceUpdate(BaseModel):
-    language: str = Field(..., pattern="^(en|es)$")
+    language: str = Field(..., pattern="^(en|es|pt|fr|sw)$")
     low_bandwidth: int = 0
 
 

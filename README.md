@@ -9,7 +9,7 @@ Hiring tools are expensive. This project aims to make AI-powered recruiting acce
 
 ## Overview
 
-FairHire is a full-stack recruiting SaaS project built around trust, accessibility, and practical AI workflows. Candidates can upload resumes, match against jobs, practice interviews, analyze salary ranges, and review GitHub portfolio strength. Recruiters can create verified company profiles, publish safer job posts, review ranked candidates, and track recruiting metrics.
+FairHire is a full-stack recruiting SaaS project built around trust, accessibility, and practical AI workflows for underserved hiring markets. The first screen lets users preview real job categories by target market before sharing personal information, then choose Candidate or Recruiter and create an account. Candidates can upload resumes, match against jobs, practice interviews, analyze salary ranges, and review GitHub portfolio strength. Recruiters can create verified company profiles, publish safer job posts, review ranked candidates, and track recruiting metrics.
 
 The project is production-oriented: PostgreSQL-ready persistence, SQLAlchemy migrations, role-based permissions, CI/CD, deployment configuration for Vercel and Render, multilingual UI, OpenAI integration with local fallback logic, and tests for security rules.
 
@@ -34,7 +34,9 @@ The project is production-oriented: PostgreSQL-ready persistence, SQLAlchemy mig
 ## Features
 
 - Candidate, recruiter, and admin roles
-- English and Spanish UI support
+- Market-first onboarding with role selection before personal data entry
+- Job discovery preview for Latin America, Africa, and global remote work
+- English, Spanish, Portuguese, French, and Swahili UI support
 - User language preference stored in the backend
 - AI/fallback responses generated in the selected language
 - PDF and TXT resume upload

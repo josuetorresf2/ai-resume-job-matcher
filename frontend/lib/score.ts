@@ -1,4 +1,4 @@
-export function scoreLabel(score: number, language: "en" | "es" = "en"): string {
+export function scoreLabel(score: number, language: string = "en"): string {
   if (language === "es") {
     if (score >= 85) return "Alta coincidencia";
     if (score >= 65) return "Buena coincidencia";

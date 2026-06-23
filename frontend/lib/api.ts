@@ -1,4 +1,5 @@
 export type Role = "candidate" | "recruiter" | "admin";
+export type SupportedLanguage = "en" | "es" | "pt" | "fr" | "sw";
 
 export type User = {
   id: number;
@@ -6,7 +7,7 @@ export type User = {
   email: string;
   phone_number: string;
   role: Role;
-  language: "en" | "es";
+  language: SupportedLanguage;
   verification_status: "unverified" | "verified";
   verification_channel: "email" | "sms" | "whatsapp";
   low_bandwidth: number;
@@ -207,7 +208,7 @@ export async function mockLogin(
   phoneNumber: string,
   password: string,
   role: Role,
-  language: "en" | "es",
+  language: SupportedLanguage,
   verificationChannel: "email" | "sms" | "whatsapp",
 ): Promise<User> {
   const response = await fetch(`${API_URL}/auth/mock-login`, {
@@ -226,7 +227,7 @@ export async function verifyAccount(user: User): Promise<User> {
   return parseResponse<User>(response, "Could not verify account.");
 }
 
-export async function updatePreferences(user: User, language: "en" | "es", lowBandwidth: number): Promise<User> {
+export async function updatePreferences(user: User, language: SupportedLanguage, lowBandwidth: number): Promise<User> {
   const response = await fetch(`${API_URL}/me/preferences`, {
     method: "PUT",
     headers: sessionHeaders(user),

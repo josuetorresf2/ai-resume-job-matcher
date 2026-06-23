@@ -155,7 +155,13 @@ def ai_analysis(settings: Settings, resume_text: str, job_description: str, lang
         return heuristic_analysis(resume_text, job_description, language=language)
 
     client = OpenAI(api_key=settings.openai_api_key)
-    language_name = "Spanish" if language == "es" else "English"
+    language_name = {
+        "en": "English",
+        "es": "Spanish",
+        "pt": "Portuguese",
+        "fr": "French",
+        "sw": "Swahili",
+    }.get(language, "English")
     prompt = {
         "role": "user",
         "content": (
