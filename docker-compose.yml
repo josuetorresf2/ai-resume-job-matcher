@@ -1,15 +1,33 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fairhire
+      POSTGRES_USER: fairhire
+      POSTGRES_PASSWORD: fairhire
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fairhire -d fairhire"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ./backend
     env_file:
       - .env
     environment:
-      DATABASE_URL: sqlite:////data/resume_matcher.db
+      DATABASE_URL: postgresql+psycopg://fairhire:fairhire@db:5432/fairhire
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     ports:
       - "8000:8000"
-    volumes:
-      - backend-data:/data
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
     build:
@@ -22,4 +40,4 @@ services:
       - backend
 
 volumes:
-  backend-data:
+  postgres-data:

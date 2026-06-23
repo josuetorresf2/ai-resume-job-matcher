@@ -77,6 +77,15 @@ def test_login_rejects_fake_looking_email():
     assert response.json()["detail"] == "Use a valid non-temporary email address."
 
 
+def test_login_returns_bearer_token_for_authenticated_requests():
+    user = login("candidate-token@example.com", "candidate", "Candidate")
+
+    response = client.get("/me", headers={"Authorization": f"Bearer {user['access_token']}"})
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "candidate-token@example.com"
+
+
 def test_candidate_cannot_edit_recruiter_job_post():
     candidate = login("candidate-job-edit@example.com", "candidate", "Candidate")
     recruiter = login("recruiter-job-edit@example.com", "recruiter", "Recruiter")

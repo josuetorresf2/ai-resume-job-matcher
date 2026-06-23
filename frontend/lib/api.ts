@@ -4,11 +4,13 @@ export type User = {
   id: number;
   name: string;
   email: string;
+  phone_number: string;
   role: Role;
   language: "en" | "es";
   verification_status: "unverified" | "verified";
   verification_channel: "email" | "sms" | "whatsapp";
   low_bandwidth: number;
+  access_token?: string | null;
 };
 
 export type CandidateProfile = {
@@ -145,10 +147,27 @@ export type GitHubAnalysis = {
   recommendations: string[];
 };
 
+export type CandidateMetrics = {
+  applications: number;
+  average_match_score: number;
+  profile_strength: number;
+};
+
+export type RecruiterMetrics = {
+  candidates_applied: number;
+  average_match_score: number;
+  interviews_scheduled: number;
+};
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 function sessionHeaders(user?: User | null): HeadersInit {
-  return user ? { "Content-Type": "application/json", "X-User-Id": String(user.id) } : { "Content-Type": "application/json" };
+  if (!user) return { "Content-Type": "application/json" };
+  return {
+    "Content-Type": "application/json",
+    "X-User-Id": String(user.id),
+    ...(user.access_token ? { Authorization: `Bearer ${user.access_token}` } : {}),
+  };
 }
 
 function humanizeErrorDetail(detail: unknown, fallback: string): string {
@@ -185,6 +204,7 @@ async function parseResponse<T>(response: Response, fallback: string): Promise<T
 export async function mockLogin(
   name: string,
   email: string,
+  phoneNumber: string,
   password: string,
   role: Role,
   language: "en" | "es",
@@ -193,7 +213,7 @@ export async function mockLogin(
   const response = await fetch(`${API_URL}/auth/mock-login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password, role, language, verification_channel: verificationChannel }),
+    body: JSON.stringify({ name, email, phone_number: phoneNumber, password, role, language, verification_channel: verificationChannel }),
   });
   return parseResponse<User>(response, "Could not start mock session.");
 }
@@ -218,6 +238,11 @@ export async function updatePreferences(user: User, language: "en" | "es", lowBa
 export async function getCandidateProfile(user: User): Promise<CandidateProfile> {
   const response = await fetch(`${API_URL}/candidate/profile`, { headers: sessionHeaders(user), cache: "no-store" });
   return parseResponse<CandidateProfile>(response, "Could not load candidate profile.");
+}
+
+export async function getCandidateMetrics(user: User): Promise<CandidateMetrics> {
+  const response = await fetch(`${API_URL}/candidate/metrics`, { headers: sessionHeaders(user), cache: "no-store" });
+  return parseResponse<CandidateMetrics>(response, "Could not load candidate metrics.");
 }
 
 export async function saveCandidateProfile(user: User, profile: Omit<CandidateProfile, "id" | "user_id">): Promise<CandidateProfile> {
@@ -334,6 +359,11 @@ export async function listMyJobPosts(user: User): Promise<JobPost[]> {
 export async function getRecruiterDashboard(user: User): Promise<RecruiterDashboard> {
   const response = await fetch(`${API_URL}/recruiter/dashboard`, { headers: sessionHeaders(user), cache: "no-store" });
   return parseResponse<RecruiterDashboard>(response, "Could not load recruiter dashboard.");
+}
+
+export async function getRecruiterMetrics(user: User): Promise<RecruiterMetrics> {
+  const response = await fetch(`${API_URL}/recruiter/metrics`, { headers: sessionHeaders(user), cache: "no-store" });
+  return parseResponse<RecruiterMetrics>(response, "Could not load recruiter metrics.");
 }
 
 export async function listRankedCandidates(user: User, jobPostId: number): Promise<RankedCandidateMatch[]> {

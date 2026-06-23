@@ -11,7 +11,15 @@ from .config import get_settings
 from .database import Base, engine, get_db
 from .models import Analysis, Candidate, JobPost, JobReport, Recruiter, Resume, User
 from .resume_parser import extract_pdf_text, extract_text_file
-from .security import company_email_matches_website, hash_password, is_valid_email, is_valid_website
+from .security import (
+    company_email_matches_website,
+    create_access_token,
+    hash_password,
+    is_valid_email,
+    is_valid_phone_number,
+    is_valid_website,
+    verify_access_token,
+)
 from .schemas import (
     AdminCompanyReview,
     AnalysisCreate,
@@ -19,6 +27,7 @@ from .schemas import (
     AnalysisResult,
     CandidateProfileResponse,
     CandidateProfileUpdate,
+    CandidateMetricsResponse,
     CareerCoachRequest,
     CareerCoachResponse,
     GitHubAnalysisRequest,
@@ -38,6 +47,7 @@ from .schemas import (
     PreferenceUpdate,
     RankedCandidateMatch,
     RecruiterDashboardResponse,
+    RecruiterMetricsResponse,
     RecruiterProfileResponse,
     RecruiterProfileUpdate,
     ResumeCreate,
@@ -52,6 +62,7 @@ from .schemas import (
 )
 from .trust import assess_job_quality, assess_job_safety, candidate_completeness_score, recruiter_trust_score
 from .analysis import extract_skills
+from .verification import send_verification_message
 
 
 settings = get_settings()
@@ -103,6 +114,7 @@ def initialize_database() -> None:
         if "users" in table_names:
             columns = {column["name"] for column in inspect(engine).get_columns("users")}
             user_columns = {
+                "phone_number": "TEXT DEFAULT ''",
                 "password_hash": "TEXT DEFAULT ''",
                 "language": "TEXT DEFAULT 'en'",
                 "verification_status": "TEXT DEFAULT 'unverified'",
@@ -161,13 +173,21 @@ def forbidden(message: str) -> HTTPException:
 
 
 def get_current_user(
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
     x_user_id: Optional[int] = Header(default=None, alias="X-User-Id"),
     db: Session = Depends(get_db),
 ) -> User:
-    if x_user_id is None:
+    token_user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        token_user_id = verify_access_token(authorization.removeprefix("Bearer ").strip(), settings.auth_secret_key)
+        if token_user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid or expired access token.")
+
+    user_id = token_user_id or x_user_id
+    if user_id is None:
         raise HTTPException(status_code=401, detail="Missing X-User-Id session header.")
 
-    user = db.get(User, x_user_id)
+    user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid mock session user.")
     return user
@@ -366,11 +386,14 @@ def health() -> HealthResponse:
 def mock_login(payload: LoginRequest, db: Session = Depends(get_db)) -> UserResponse:
     if not is_valid_email(payload.email):
         raise HTTPException(status_code=400, detail="Use a valid non-temporary email address.")
+    if payload.verification_channel in {"sms", "whatsapp"} and not is_valid_phone_number(payload.phone_number):
+        raise HTTPException(status_code=400, detail="SMS and WhatsApp verification require a real E.164 phone number, for example +593987654321.")
     user = db.query(User).filter(User.email == payload.email).one_or_none()
     if user is None:
         user = User(
             name=payload.name,
             email=payload.email,
+            phone_number=payload.phone_number,
             password_hash=hash_password(payload.password),
             role=payload.role,
             language=payload.language,
@@ -385,6 +408,7 @@ def mock_login(payload: LoginRequest, db: Session = Depends(get_db)) -> UserResp
         raise HTTPException(status_code=401, detail="Incorrect password.")
     else:
         user.name = payload.name
+        user.phone_number = payload.phone_number
         user.language = payload.language
         user.verification_channel = payload.verification_channel
 
@@ -394,7 +418,9 @@ def mock_login(payload: LoginRequest, db: Session = Depends(get_db)) -> UserResp
         db.add(Recruiter(user_id=user.id))
     db.commit()
     db.refresh(user)
-    return user
+    response = UserResponse.model_validate(user)
+    response.access_token = create_access_token(user.id, settings.auth_secret_key)
+    return response
 
 
 @app.put("/me/preferences", response_model=UserResponse)
@@ -416,9 +442,17 @@ def request_verification(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> VerificationResponse:
+    if payload.channel in {"sms", "whatsapp"} and not is_valid_phone_number(current_user.phone_number):
+        raise HTTPException(status_code=400, detail="Add a real E.164 phone number before requesting SMS or WhatsApp verification.")
     current_user.verification_channel = payload.channel
     db.commit()
-    return VerificationResponse(status="sent", message=f"Verification placeholder sent by {payload.channel}.")
+    status = send_verification_message(settings, payload.channel, current_user.phone_number, "123456")
+    message = (
+        f"Verification sent by {payload.channel}."
+        if status == "sent"
+        else f"Verification placeholder prepared for {payload.channel}. Configure Twilio env vars to send real messages."
+    )
+    return VerificationResponse(status=status, message=message)
 
 
 @app.post("/auth/verify-placeholder", response_model=UserResponse)
@@ -556,6 +590,22 @@ def update_resume(
     db.commit()
     db.refresh(row)
     return row
+
+
+@app.get("/candidate/metrics", response_model=CandidateMetricsResponse)
+def get_candidate_metrics(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CandidateMetricsResponse:
+    require_role(current_user, "candidate")
+    profile = db.query(Candidate).filter(Candidate.user_id == current_user.id).one()
+    rows = db.query(Analysis).filter(Analysis.candidate_user_id == current_user.id).all()
+    average = round(sum(row.match_score for row in rows) / len(rows)) if rows else 0
+    return CandidateMetricsResponse(
+        applications=len(rows),
+        average_match_score=average,
+        profile_strength=profile.completeness_score,
+    )
 
 
 @app.post("/candidate/interview-practice", response_model=InterviewPracticeResponse)
@@ -874,6 +924,22 @@ def get_recruiter_dashboard(
             )
         )
     return RecruiterDashboardResponse(job_posts=items, total_shortlisted=total_shortlisted)
+
+
+@app.get("/recruiter/metrics", response_model=RecruiterMetricsResponse)
+def get_recruiter_metrics(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RecruiterMetricsResponse:
+    require_role(current_user, "recruiter")
+    rows = db.query(Analysis).filter(Analysis.recruiter_user_id == current_user.id).all()
+    average = round(sum(row.match_score for row in rows) / len(rows)) if rows else 0
+    interviews = len([row for row in rows if row.recruiter_status == "Shortlisted"])
+    return RecruiterMetricsResponse(
+        candidates_applied=len({row.candidate_user_id for row in rows}),
+        average_match_score=average,
+        interviews_scheduled=interviews,
+    )
 
 
 @app.get("/job-posts/{job_post_id}/ranked-candidates", response_model=list[RankedCandidateMatch])

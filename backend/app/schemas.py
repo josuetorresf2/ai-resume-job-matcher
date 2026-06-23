@@ -10,6 +10,7 @@ class HealthResponse(BaseModel):
 class LoginRequest(BaseModel):
     name: str = Field(..., min_length=2)
     email: str = Field(..., min_length=5)
+    phone_number: str = ""
     password: str = Field(..., min_length=8)
     role: str = Field(..., pattern="^(candidate|recruiter|admin)$")
     language: str = Field(default="en", pattern="^(en|es)$")
@@ -20,11 +21,13 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
+    phone_number: str
     role: str
     language: str
     verification_status: str
     verification_channel: str
     low_bandwidth: int
+    access_token: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -278,3 +281,15 @@ class GitHubAnalysisResponse(BaseModel):
     tests: str
     documentation: str
     recommendations: list[str]
+
+
+class CandidateMetricsResponse(BaseModel):
+    applications: int
+    average_match_score: int
+    profile_strength: int
+
+
+class RecruiterMetricsResponse(BaseModel):
+    candidates_applied: int
+    average_match_score: int
+    interviews_scheduled: int

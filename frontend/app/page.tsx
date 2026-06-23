@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Analysis,
   CandidateProfile,
+  CandidateMetrics,
   CareerCoachPlan,
   GitHubAnalysis,
   InterviewPractice,
@@ -12,6 +13,7 @@ import {
   JobPost,
   RankedCandidateMatch,
   RecruiterProfile,
+  RecruiterMetrics,
   Resume,
   Role,
   User,
@@ -22,9 +24,11 @@ import {
   extractResumeText,
   analyzeGitHub,
   getCandidateProfile,
+  getCandidateMetrics,
   getCareerCoachPlan,
   getRecruiterProfile,
   getRecruiterDashboard,
+  getRecruiterMetrics,
   getSalaryIntelligence,
   listRankedCandidates,
   listJobPosts,
@@ -66,6 +70,8 @@ const COPY = {
     loginHelp: "Create an account with a role, password, language, and verification channel.",
     name: "Name",
     email: "Email",
+    phoneNumber: "Phone number",
+    phoneHint: "+593987654321",
     password: "Password",
     passwordHint: "At least 8 characters",
     language: "Language",
@@ -132,6 +138,11 @@ const COPY = {
     noMatchYet: "No match yet",
     savedResumes: "Saved resumes",
     myJobPosts: "My job posts",
+    applications: "Applications",
+    averageMatch: "Average match",
+    profileStrength: "Profile strength",
+    candidatesApplied: "Candidates applied",
+    interviewsScheduled: "Interviews scheduled",
     ownedBySession: "Owned by this session",
     matches: "Matches",
     roleFiltered: "Role-filtered results",
@@ -178,6 +189,8 @@ const COPY = {
     loginHelp: "Crea una cuenta con rol, password, idioma y canal de verificacion.",
     name: "Nombre",
     email: "Email",
+    phoneNumber: "Telefono",
+    phoneHint: "+593987654321",
     password: "Password",
     passwordHint: "Minimo 8 caracteres",
     language: "Idioma",
@@ -244,6 +257,11 @@ const COPY = {
     noMatchYet: "Sin match todavia",
     savedResumes: "Resumes guardados",
     myJobPosts: "Mis empleos",
+    applications: "Aplicaciones",
+    averageMatch: "Match promedio",
+    profileStrength: "Fuerza del perfil",
+    candidatesApplied: "Candidatos aplicados",
+    interviewsScheduled: "Entrevistas agendadas",
     ownedBySession: "Propiedad de esta sesion",
     matches: "Matches",
     roleFiltered: "Resultados filtrados por rol",
@@ -287,6 +305,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [language, setLanguage] = useState<"en" | "es">("en");
   const [verificationChannel, setVerificationChannel] = useState<"email" | "sms" | "whatsapp">("email");
@@ -314,7 +333,7 @@ export default function Home() {
     }
     setLoading(true);
     try {
-      const session = await mockLogin(name.trim(), email.trim(), password, selectedRole, language, verificationChannel);
+      const session = await mockLogin(name.trim(), email.trim(), phoneNumber.trim(), password, selectedRole, language, verificationChannel);
       setRole(session.role);
       setUser(session);
     } catch (err) {
@@ -382,6 +401,7 @@ export default function Home() {
         <RoleSelection
           name={name}
           email={email}
+          phoneNumber={phoneNumber}
           password={password}
           language={language}
           verificationChannel={verificationChannel}
@@ -391,6 +411,7 @@ export default function Home() {
           selectedRole={selectedRole}
           setName={setName}
           setEmail={setEmail}
+          setPhoneNumber={setPhoneNumber}
           setPassword={setPassword}
           setLanguage={setLanguage}
           setVerificationChannel={setVerificationChannel}
@@ -409,6 +430,7 @@ export default function Home() {
 function RoleSelection({
   name,
   email,
+  phoneNumber,
   password,
   language,
   verificationChannel,
@@ -418,6 +440,7 @@ function RoleSelection({
   selectedRole,
   setName,
   setEmail,
+  setPhoneNumber,
   setPassword,
   setLanguage,
   setVerificationChannel,
@@ -426,6 +449,7 @@ function RoleSelection({
 }: {
   name: string;
   email: string;
+  phoneNumber: string;
   password: string;
   language: "en" | "es";
   verificationChannel: "email" | "sms" | "whatsapp";
@@ -435,6 +459,7 @@ function RoleSelection({
   selectedRole: Role | null;
   setName: (value: string) => void;
   setEmail: (value: string) => void;
+  setPhoneNumber: (value: string) => void;
   setPassword: (value: string) => void;
   setLanguage: (value: "en" | "es") => void;
   setVerificationChannel: (value: "email" | "sms" | "whatsapp") => void;
@@ -459,6 +484,10 @@ function RoleSelection({
         <label className="field">
           <span>{c.email}</span>
           <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="alex@example.com" />
+        </label>
+        <label className="field">
+          <span>{c.phoneNumber}</span>
+          <input value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder={c.phoneHint} />
         </label>
         <label className="field">
           <span>{c.password}</span>
@@ -543,6 +572,7 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [jobs, setJobs] = useState<JobPost[]>([]);
   const [matches, setMatches] = useState<Analysis[]>([]);
+  const [metrics, setMetrics] = useState<CandidateMetrics | null>(null);
   const [resumeId, setResumeId] = useState("");
   const [jobPostId, setJobPostId] = useState("");
   const [resumeTitle, setResumeTitle] = useState("Primary resume");
@@ -565,16 +595,18 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
   async function refreshCandidate() {
     setError("");
     try {
-      const [nextProfile, nextResumes, nextJobs, nextMatches] = await Promise.all([
+      const [nextProfile, nextResumes, nextJobs, nextMatches, nextMetrics] = await Promise.all([
         getCandidateProfile(user),
         listResumes(user),
         listJobPosts(),
         listMatches(user),
+        getCandidateMetrics(user),
       ]);
       setProfile(nextProfile);
       setResumes(nextResumes);
       setJobs(nextJobs);
       setMatches(nextMatches);
+      setMetrics(nextMetrics);
       setCurrent(nextMatches[0] ?? null);
       setResumeId(nextResumes[0] ? String(nextResumes[0].id) : "");
       setJobPostId(nextJobs[0] ? String(nextJobs[0].id) : "");
@@ -664,6 +696,13 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
   return (
     <>
       <DashboardMetrics latest={current} itemCount={resumes.length} itemLabel={c.savedResumes} matchCount={matches.length} mode={c.candidate} c={c} language={user.language} />
+      <SaaSMetrics
+        items={[
+          [c.applications, String(metrics?.applications ?? 0)],
+          [c.averageMatch, `${metrics?.average_match_score ?? 0}%`],
+          [c.profileStrength, `${metrics?.profile_strength ?? 0}%`],
+        ]}
+      />
       <section className="workspace role-workspace">
         <div className="panel input-panel">
           <PanelTitle title={c.candidateProfile} subtitle={c.candidateProfileHelp} />
@@ -855,6 +894,7 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
   });
   const [jobs, setJobs] = useState<JobPost[]>([]);
   const [matches, setMatches] = useState<Analysis[]>([]);
+  const [metrics, setMetrics] = useState<RecruiterMetrics | null>(null);
   const [jobId, setJobId] = useState("");
   const [jobTitle, setJobTitle] = useState("Software Engineer");
   const [company, setCompany] = useState("Acme");
@@ -871,10 +911,16 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
   async function refreshRecruiter() {
     setError("");
     try {
-      const [nextProfile, nextJobs, nextMatches] = await Promise.all([getRecruiterProfile(user), listMyJobPosts(user), listMatches(user)]);
+      const [nextProfile, nextJobs, nextMatches, nextMetrics] = await Promise.all([
+        getRecruiterProfile(user),
+        listMyJobPosts(user),
+        listMatches(user),
+        getRecruiterMetrics(user),
+      ]);
       setProfile(nextProfile);
       setJobs(nextJobs);
       setMatches(nextMatches);
+      setMetrics(nextMetrics);
       setJobId(nextJobs[0] ? String(nextJobs[0].id) : "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load recruiter workspace.");
@@ -949,6 +995,13 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
   return (
     <>
       <DashboardMetrics latest={latest} itemCount={jobs.length} itemLabel={c.myJobPosts} matchCount={matches.length} mode={c.recruiter} c={c} language={user.language} />
+      <SaaSMetrics
+        items={[
+          [c.candidatesApplied, String(metrics?.candidates_applied ?? 0)],
+          [c.averageMatch, `${metrics?.average_match_score ?? 0}%`],
+          [c.interviewsScheduled, String(metrics?.interviews_scheduled ?? 0)],
+        ]}
+      />
       <section className="workspace role-workspace">
         <div className="panel input-panel">
           <PanelTitle title={c.recruiterProfile} subtitle={c.recruiterProfileHelp} />
@@ -1069,6 +1122,19 @@ function DashboardMetrics({ latest, itemCount, itemLabel, matchCount, mode, c, l
         <strong>{mode}</strong>
         <small>{average ? `${average}/100` : c.accessControlled}</small>
       </div>
+    </section>
+  );
+}
+
+function SaaSMetrics({ items }: { items: [string, string][] }) {
+  return (
+    <section className="saas-metrics">
+      {items.map(([label, value]) => (
+        <div className="saas-metric" key={label}>
+          <span>{label}</span>
+          <strong>{value}</strong>
+        </div>
+      ))}
     </section>
   );
 }
