@@ -86,6 +86,45 @@ def test_login_returns_bearer_token_for_authenticated_requests():
     assert response.json()["email"] == "candidate-token@example.com"
 
 
+def test_login_reuses_existing_user_by_normalized_email():
+    first = login("duplicate@example.com", "candidate", "First Name")
+    second = login("DUPLICATE@example.com", "candidate", "Updated Name")
+
+    assert second["id"] == first["id"]
+    assert second["email"] == "duplicate@example.com"
+    assert second["name"] == "Updated Name"
+
+
+def test_talent_pool_export_excludes_password_data():
+    candidate = login("pool-candidate@example.com", "candidate", "Pool Candidate")
+    admin = login("pool-admin@example.com", "admin", "Pool Admin")
+    client.put(
+        "/candidate/profile",
+        headers=headers(candidate),
+        json={
+            "headline": "Backend engineer",
+            "skills": "Python, FastAPI, SQL",
+            "experience": "Built APIs for community projects.",
+            "education": "",
+            "portfolio_url": "https://portfolio.example.com",
+            "github_url": "https://github.com/example",
+            "linkedin_url": "",
+            "project_demo_urls": "https://demo.example.com",
+            "visibility": "public",
+            "bio": "Programmer with proof of work.",
+        },
+    )
+
+    response = client.get("/talent-pool", headers=headers(admin))
+    data = response.json()
+    serialized = str(data).lower()
+
+    assert response.status_code == 200
+    assert any(row["email"] == "pool-candidate@example.com" for row in data["candidates"])
+    assert "password" not in serialized
+    assert "hash" not in serialized
+
+
 def test_candidate_cannot_edit_recruiter_job_post():
     candidate = login("candidate-job-edit@example.com", "candidate", "Candidate")
     recruiter = login("recruiter-job-edit@example.com", "recruiter", "Recruiter")

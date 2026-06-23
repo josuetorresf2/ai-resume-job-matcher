@@ -401,29 +401,29 @@ export async function listMatches(user: User): Promise<Analysis[]> {
   return parseResponse<Analysis[]>(response, "Could not load match history.");
 }
 
-export async function practiceInterview(user: User, resumeId?: number): Promise<InterviewPractice> {
+export async function practiceInterview(user: User, resumeId?: number, resumeText = ""): Promise<InterviewPractice> {
   const response = await fetch(`${API_URL}/candidate/interview-practice`, {
     method: "POST",
     headers: sessionHeaders(user),
-    body: JSON.stringify({ role: "Backend Engineer", resume_id: resumeId }),
+    body: JSON.stringify({ role: "Backend Engineer", resume_id: resumeId, resume_text: resumeText }),
   });
   return parseResponse<InterviewPractice>(response, "Could not create interview practice.");
 }
 
-export async function getCareerCoachPlan(user: User, resumeId?: number, jobPostId?: number): Promise<CareerCoachPlan> {
+export async function getCareerCoachPlan(user: User, resumeId?: number, jobPostId?: number, resumeText = ""): Promise<CareerCoachPlan> {
   const response = await fetch(`${API_URL}/candidate/career-coach`, {
     method: "POST",
     headers: sessionHeaders(user),
-    body: JSON.stringify({ resume_id: resumeId, job_post_id: jobPostId, target_score: 85 }),
+    body: JSON.stringify({ resume_id: resumeId, resume_text: resumeText, job_post_id: jobPostId, target_score: 85 }),
   });
   return parseResponse<CareerCoachPlan>(response, "Could not create career roadmap.");
 }
 
-export async function getSalaryIntelligence(user: User, resumeId: number): Promise<SalaryIntelligence> {
+export async function getSalaryIntelligence(user: User, resumeId?: number, resumeText = ""): Promise<SalaryIntelligence> {
   const response = await fetch(`${API_URL}/candidate/salary-intelligence`, {
     method: "POST",
     headers: sessionHeaders(user),
-    body: JSON.stringify({ resume_id: resumeId }),
+    body: JSON.stringify({ resume_id: resumeId, resume_text: resumeText }),
   });
   return parseResponse<SalaryIntelligence>(response, "Could not estimate salary ranges.");
 }

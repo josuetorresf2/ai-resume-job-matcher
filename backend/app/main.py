@@ -56,6 +56,8 @@ from .schemas import (
     SalaryIntelligenceRequest,
     SalaryIntelligenceResponse,
     SalaryRange,
+    TalentPoolCandidate,
+    TalentPoolResponse,
     UserResponse,
     VerificationRequest,
     VerificationResponse,
@@ -294,6 +296,13 @@ def candidate_resume_for_user(db: Session, current_user: User, resume_id: Option
     return query.order_by(Resume.updated_at.desc()).first()
 
 
+def candidate_resume_text_for_tools(db: Session, current_user: User, resume_id: Optional[int], resume_text: str = "") -> str:
+    if resume_text.strip():
+        return resume_text.strip()
+    resume = candidate_resume_for_user(db, current_user, resume_id)
+    return resume.resume_text if resume else ""
+
+
 def localized(language: str, english: str, spanish: str) -> str:
     return spanish if language == "es" else english
 
@@ -385,16 +394,17 @@ def health() -> HealthResponse:
 
 @app.post("/auth/mock-login", response_model=UserResponse)
 def mock_login(payload: LoginRequest, db: Session = Depends(get_db)) -> UserResponse:
-    if not is_valid_email(payload.email):
+    normalized_email = payload.email.strip().lower()
+    if not is_valid_email(normalized_email):
         raise HTTPException(status_code=400, detail="Use a valid non-temporary email address.")
     if payload.verification_channel in {"sms", "whatsapp"} and not is_valid_phone_number(payload.phone_number):
         raise HTTPException(status_code=400, detail="SMS and WhatsApp verification require a real E.164 phone number, for example +593987654321.")
-    user = db.query(User).filter(User.email == payload.email).one_or_none()
+    user = db.query(User).filter(User.email == normalized_email).one_or_none()
     if user is None:
         user = User(
-            name=payload.name,
-            email=payload.email,
-            phone_number=payload.phone_number,
+            name=payload.name.strip(),
+            email=normalized_email,
+            phone_number=payload.phone_number.strip(),
             password_hash=hash_password(payload.password),
             role=payload.role,
             language=payload.language,
@@ -408,8 +418,10 @@ def mock_login(payload: LoginRequest, db: Session = Depends(get_db)) -> UserResp
     elif user.password_hash and user.password_hash != hash_password(payload.password):
         raise HTTPException(status_code=401, detail="Incorrect password.")
     else:
-        user.name = payload.name
-        user.phone_number = payload.phone_number
+        if payload.name.strip():
+            user.name = payload.name.strip()
+        if payload.phone_number.strip():
+            user.phone_number = payload.phone_number.strip()
         user.language = payload.language
         user.verification_channel = payload.verification_channel
 
@@ -435,6 +447,48 @@ def update_preferences(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@app.get("/talent-pool", response_model=TalentPoolResponse)
+def list_talent_pool(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TalentPoolResponse:
+    if current_user.role not in {"recruiter", "admin"}:
+        raise forbidden("Only recruiters and admins can view the talent pool.")
+    rows = db.query(Candidate).join(User, Candidate.user_id == User.id).all()
+    candidates: list[TalentPoolCandidate] = []
+    for profile in rows:
+        user = profile.user
+        if current_user.role == "recruiter":
+            recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id).one_or_none()
+            recruiter_verified = current_user.verification_status == "verified" and recruiter is not None and recruiter.company_status == "verified"
+            if profile.visibility == "private":
+                continue
+            if profile.visibility == "visible_to_verified_recruiters" and not recruiter_verified:
+                continue
+        candidates.append(
+            TalentPoolCandidate(
+                user_id=user.id,
+                name=user.name,
+                email=user.email,
+                phone_number=user.phone_number,
+                language=user.language,
+                verification_status=user.verification_status,
+                headline=profile.headline,
+                skills=profile.skills,
+                experience=profile.experience,
+                education=profile.education,
+                portfolio_url=profile.portfolio_url,
+                github_url=profile.github_url,
+                linkedin_url=profile.linkedin_url,
+                project_demo_urls=profile.project_demo_urls,
+                visibility=profile.visibility,
+                completeness_score=profile.completeness_score,
+                bio=profile.bio,
+            )
+        )
+    return TalentPoolResponse(candidates=candidates)
 
 
 @app.post("/auth/request-verification", response_model=VerificationResponse)
@@ -617,8 +671,8 @@ def create_interview_practice(
     db: Session = Depends(get_db),
 ) -> InterviewPracticeResponse:
     require_role(current_user, "candidate")
-    resume = candidate_resume_for_user(db, current_user, payload.resume_id)
-    skills = set(extract_skills(resume.resume_text if resume else ""))
+    resume_text = candidate_resume_text_for_tools(db, current_user, payload.resume_id, payload.resume_text)
+    skills = set(extract_skills(resume_text))
     score = 84 if {"python", "fastapi", "sql"} & skills else 72
     if current_user.language == "es":
         return InterviewPracticeResponse(
@@ -656,8 +710,8 @@ def create_career_coach_plan(
     db: Session = Depends(get_db),
 ) -> CareerCoachResponse:
     require_role(current_user, "candidate")
-    resume = candidate_resume_for_user(db, current_user, payload.resume_id)
-    if resume is None:
+    resume_text = candidate_resume_text_for_tools(db, current_user, payload.resume_id, payload.resume_text)
+    if not resume_text:
         raise HTTPException(status_code=404, detail="Create or upload a resume first.")
     job_text = ""
     current_score = 62
@@ -666,8 +720,8 @@ def create_career_coach_plan(
         if job is None:
             raise HTTPException(status_code=404, detail="Job post not found.")
         job_text = job_analysis_text(job)
-        current_score = ai_analysis(settings, resume.resume_text, job_text, language=current_user.language)["match_score"]
-    learn = career_skills_to_learn(resume.resume_text, job_text)
+        current_score = ai_analysis(settings, resume_text, job_text, language=current_user.language)["match_score"]
+    learn = career_skills_to_learn(resume_text, job_text)
     estimated_effort = localized(current_user.language, "4 weeks", "4 semanas")
     if current_user.language == "es":
         roadmap = [
@@ -699,10 +753,10 @@ def create_salary_intelligence(
     db: Session = Depends(get_db),
 ) -> SalaryIntelligenceResponse:
     require_role(current_user, "candidate")
-    resume = candidate_resume_for_user(db, current_user, payload.resume_id)
-    if resume is None:
+    resume_text = candidate_resume_text_for_tools(db, current_user, payload.resume_id, payload.resume_text)
+    if not resume_text:
         raise HTTPException(status_code=404, detail="Resume not found.")
-    skills = set(extract_skills(resume.resume_text))
+    skills = set(extract_skills(resume_text))
     senior_signal = len(skills & {"aws", "docker", "kubernetes", "terraform", "postgresql", "ci/cd"}) >= 3
     ranges = [
         SalaryRange(market="Ecuador", range="$1200-$1800" if not senior_signal else "$1800-$2600"),

@@ -818,6 +818,7 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
   const [github, setGithub] = useState<GitHubAnalysis | null>(null);
   const [githubUrl, setGithubUrl] = useState("https://github.com/your-username");
   const [loading, setLoading] = useState(false);
+  const [activeTool, setActiveTool] = useState<"interview" | "coach" | "salary" | "github" | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -906,24 +907,38 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
 
   async function runCandidateTool(tool: "interview" | "coach" | "salary" | "github") {
     setLoading(true);
+    setActiveTool(tool);
     setError("");
     setNotice("");
     try {
       const selectedResumeId = resumeId ? Number(resumeId) : undefined;
+      const currentResumeText = resumeText.trim();
       if (tool === "interview") {
-        setInterview(await practiceInterview(user, selectedResumeId));
+        const result = await practiceInterview(user, selectedResumeId, currentResumeText);
+        setInterview(result);
+        setNotice(user.language === "es" ? "Entrevista de practica generada." : "Practice interview generated.");
       } else if (tool === "coach") {
-        setCoach(await getCareerCoachPlan(user, selectedResumeId, jobPostId ? Number(jobPostId) : undefined));
+        const result = await getCareerCoachPlan(user, selectedResumeId, jobPostId ? Number(jobPostId) : undefined, currentResumeText);
+        setCoach(result);
+        setNotice(user.language === "es" ? "Roadmap de carrera generado." : "Career roadmap generated.");
       } else if (tool === "salary") {
-        if (!selectedResumeId) throw new Error(user.language === "es" ? "Selecciona o guarda un resume primero." : "Select or save a resume first.");
-        setSalary(await getSalaryIntelligence(user, selectedResumeId));
+        if (!selectedResumeId && currentResumeText.length < 20) throw new Error(user.language === "es" ? "Pega o sube un resume primero." : "Paste or upload a resume first.");
+        const result = await getSalaryIntelligence(user, selectedResumeId, currentResumeText);
+        setSalary(result);
+        setNotice(user.language === "es" ? "Estimacion salarial generada." : "Salary estimate generated.");
       } else {
-        setGithub(await analyzeGitHub(user, githubUrl));
+        const candidateGithubUrl = githubUrl.trim() || profile.github_url.trim();
+        if (!candidateGithubUrl) throw new Error(user.language === "es" ? "Agrega una URL de GitHub primero." : "Add a GitHub URL first.");
+        const result = await analyzeGitHub(user, candidateGithubUrl);
+        setGithub(result);
+        setGithubUrl(candidateGithubUrl);
+        setNotice(user.language === "es" ? "Analisis de GitHub generado." : "GitHub analysis generated.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not run AI tool.");
     } finally {
       setLoading(false);
+      setActiveTool(null);
     }
   }
 
@@ -1057,15 +1072,28 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
       <section className="panel history-wide">
         <PanelTitle title={c.aiTools} subtitle={c.aiToolsHelp} />
         <div className="tool-grid">
-          <button className="secondary-action" disabled={loading} onClick={() => runCandidateTool("interview")}>{c.practiceInterview}</button>
-          <button className="secondary-action" disabled={loading} onClick={() => runCandidateTool("coach")}>{c.careerCoach}</button>
-          <button className="secondary-action" disabled={loading || !resumeId} onClick={() => runCandidateTool("salary")}>{c.salaryIntel}</button>
+          <button className="secondary-action" disabled={loading} onClick={() => runCandidateTool("interview")}>
+            {activeTool === "interview" ? <span className="spinner" /> : null}
+            {c.practiceInterview}
+          </button>
+          <button className="secondary-action" disabled={loading} onClick={() => runCandidateTool("coach")}>
+            {activeTool === "coach" ? <span className="spinner" /> : null}
+            {c.careerCoach}
+          </button>
+          <button className="secondary-action" disabled={loading || (!resumeId && resumeText.trim().length < 20)} onClick={() => runCandidateTool("salary")}>
+            {activeTool === "salary" ? <span className="spinner" /> : null}
+            {c.salaryIntel}
+          </button>
           <label className="field github-field">
             <span>{c.githubUrl}</span>
-            <input value={githubUrl} onChange={(event) => setGithubUrl(event.target.value)} />
+            <input value={githubUrl} onChange={(event) => setGithubUrl(event.target.value)} placeholder="https://github.com/your-username" />
           </label>
-          <button className="secondary-action" disabled={loading} onClick={() => runCandidateTool("github")}>{c.githubAnalysis}</button>
+          <button className="secondary-action" disabled={loading} onClick={() => runCandidateTool("github")}>
+            {activeTool === "github" ? <span className="spinner" /> : null}
+            {c.githubAnalysis}
+          </button>
         </div>
+        <StatusMessages error={error} notice={notice} c={c} />
         <CandidateInsights interview={interview} coach={coach} salary={salary} github={github} c={c} />
       </section>
       <MatchHistory matches={matches} setCurrent={setCurrent} c={c} language={user.language} />

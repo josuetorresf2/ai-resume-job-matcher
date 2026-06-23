@@ -44,7 +44,6 @@ def upgrade() -> None:
         sa.Column("portfolio_url", sa.String(length=255), nullable=False, server_default=""),
         sa.Column("github_url", sa.String(length=255), nullable=False, server_default=""),
         sa.Column("linkedin_url", sa.String(length=255), nullable=False, server_default=""),
-        sa.Column("project_demo_urls", sa.Text(), nullable=False, server_default=""),
         sa.Column("visibility", sa.String(length=64), nullable=False, server_default="private"),
         sa.Column("completeness_score", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("bio", sa.Text(), nullable=False, server_default=""),

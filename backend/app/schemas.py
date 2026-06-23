@@ -32,6 +32,30 @@ class UserResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TalentPoolCandidate(BaseModel):
+    user_id: int
+    name: str
+    email: str
+    phone_number: str
+    language: str
+    verification_status: str
+    headline: str
+    skills: str
+    experience: str
+    education: str
+    portfolio_url: str
+    github_url: str
+    linkedin_url: str
+    project_demo_urls: str
+    visibility: str
+    completeness_score: int
+    bio: str
+
+
+class TalentPoolResponse(BaseModel):
+    candidates: list[TalentPoolCandidate]
+
+
 class PreferenceUpdate(BaseModel):
     language: str = Field(..., pattern="^(en|es|pt|fr|sw)$")
     low_bandwidth: int = 0
@@ -232,6 +256,7 @@ class RecruiterDashboardResponse(BaseModel):
 class InterviewPracticeRequest(BaseModel):
     role: str = "Backend Engineer"
     resume_id: Optional[int] = None
+    resume_text: str = ""
 
 
 class InterviewPracticeResponse(BaseModel):
@@ -244,6 +269,7 @@ class InterviewPracticeResponse(BaseModel):
 
 class CareerCoachRequest(BaseModel):
     resume_id: Optional[int] = None
+    resume_text: str = ""
     job_post_id: Optional[int] = None
     target_score: int = Field(default=85, ge=0, le=100)
 
@@ -257,7 +283,8 @@ class CareerCoachResponse(BaseModel):
 
 
 class SalaryIntelligenceRequest(BaseModel):
-    resume_id: int
+    resume_id: Optional[int] = None
+    resume_text: str = ""
 
 
 class SalaryRange(BaseModel):
