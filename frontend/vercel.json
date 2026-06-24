@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": ".next-vercel",
   "installCommand": "npm ci --include=dev",
   "framework": "nextjs",
   "env": {

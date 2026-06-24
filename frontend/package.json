@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:vercel": "NEXT_DIST_DIR=.next-vercel next build",
     "start": "next start",
     "lint": "next lint",
     "test": "node --test tests/*.test.mjs"

@@ -40,6 +40,12 @@
   box-sizing: border-box;
 }
 
+*,
+*::before,
+*::after {
+  min-width: 0;
+}
+
 body {
   margin: 0;
   background:
@@ -70,6 +76,7 @@ select {
 
 button {
   color: inherit;
+  overflow-wrap: anywhere;
 }
 
 .app-shell {
@@ -173,7 +180,8 @@ h3 {
 .compact-select {
   border-radius: 999px;
   min-height: 38px;
-  padding: 8px 32px 8px 13px;
+  max-width: min(100%, 190px);
+  padding: 8px 38px 8px 13px;
   width: auto;
 }
 
@@ -594,9 +602,28 @@ select {
   width: 100%;
 }
 
+select {
+  appearance: none;
+  background-color: rgba(2, 6, 23, 0.58);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-repeat: no-repeat;
+  background-size: 6px 6px, 6px 6px;
+  padding-right: 38px;
+  text-overflow: ellipsis;
+}
+
 :root[data-theme="light"] input,
 :root[data-theme="light"] select {
   background: rgba(255, 255, 255, 0.92);
+}
+
+:root[data-theme="light"] select {
+  background-color: rgba(255, 255, 255, 0.92);
 }
 
 input:focus,
@@ -725,6 +752,7 @@ textarea:focus {
   line-height: 1.35;
   min-height: 52px;
   padding: 10px 12px;
+  overflow-wrap: anywhere;
   word-break: normal;
 }
 
@@ -1240,10 +1268,52 @@ textarea:focus {
   .role-workspace,
   .role-grid,
   .role-panel,
+  .role-picker,
+  .market-signal-grid,
   .tool-grid,
   .insight-grid,
   .two-column-fields {
     grid-template-columns: 1fr;
+  }
+
+  .topbar-actions,
+  .topbar-actions > *,
+  .compact-select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .role-picker {
+    gap: 10px;
+  }
+
+  .role-choice,
+  .role-picker-intro .role-choice {
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .role-picker-intro .role-choice span {
+    font-size: 21px;
+    line-height: 1.15;
+  }
+
+  .role-picker-intro .role-choice small {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .selected-role-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .job-preview-card {
+    grid-template-columns: 1fr;
+  }
+
+  .job-preview-card > span {
+    justify-self: flex-start;
   }
 
   .role-actions {
