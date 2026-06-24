@@ -1,5 +1,6 @@
 {
   "buildCommand": "npm run build",
+  "outputDirectory": ".next",
   "installCommand": "npm ci --include=dev",
   "framework": "nextjs",
   "env": {
