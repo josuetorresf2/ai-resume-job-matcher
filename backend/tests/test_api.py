@@ -288,6 +288,46 @@ def test_matching_still_works_for_role_based_flow():
     assert len(recruiter_matches.json()) >= 1
 
 
+def test_match_idempotency_key_returns_existing_analysis():
+    candidate = login("candidate-idempotent@example.com", "candidate", "Candidate")
+    recruiter = login("recruiter-idempotent@example.com", "recruiter", "Recruiter")
+    resume = create_resume(candidate)
+    job = create_job(recruiter)
+    request_headers = {**headers(candidate), "Idempotency-Key": "match-retry-123"}
+
+    first = client.post("/matches", headers=request_headers, json={"resume_id": resume["id"], "job_post_id": job["id"]})
+    second = client.post("/matches", headers=request_headers, json={"resume_id": resume["id"], "job_post_id": job["id"]})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["id"] == first.json()["id"]
+
+
+def test_match_idempotency_key_is_scoped_to_user_and_match_inputs():
+    candidate_one = login("candidate-idempotent-one@example.com", "candidate", "Candidate One")
+    candidate_two = login("candidate-idempotent-two@example.com", "candidate", "Candidate Two")
+    recruiter = login("recruiter-idempotent-scope@example.com", "recruiter", "Recruiter")
+    resume_one = create_resume(candidate_one)
+    resume_two = create_resume(candidate_two)
+    job = create_job(recruiter)
+
+    first = client.post(
+        "/matches",
+        headers={**headers(candidate_one), "Idempotency-Key": "shared-key"},
+        json={"resume_id": resume_one["id"], "job_post_id": job["id"]},
+    )
+    second = client.post(
+        "/matches",
+        headers={**headers(candidate_two), "Idempotency-Key": "shared-key"},
+        json={"resume_id": resume_two["id"], "job_post_id": job["id"]},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["id"] != first.json()["id"]
+    assert second.json()["candidate_user_id"] == candidate_two["id"]
+
+
 def test_recruiter_dashboard_and_ranked_candidates():
     candidate_one = login("candidate-rank-one@example.com", "candidate", "Candidate One")
     candidate_two = login("candidate-rank-two@example.com", "candidate", "Candidate Two")

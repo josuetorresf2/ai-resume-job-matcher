@@ -478,9 +478,9 @@ Verified gaps:
 - Career coach is heuristic and does not persist plans.
 - Ranked candidates backend exists, but recruiter UI does not expose a ranked-candidate page.
 - No external job-provider imports.
-- No idempotency for match creation, job imports, or external requests.
+- Match creation supports an optional `Idempotency-Key` header scoped to the current user, resume, and job post.
+- No idempotency for job imports or external requests.
 - No request throttling or retry policies.
-- No structured logging/correlation IDs.
 - No AWS-ready infrastructure files.
 
 ## Security Weaknesses
@@ -505,7 +505,7 @@ Verified or directly inferred from implementation:
 - Backend startup performs schema creation/mutation outside Alembic, creating two schema-management paths.
 - The frontend is a single large page component, making future role dashboards and E2E tests harder to isolate.
 - JSON arrays are stored as text fields instead of native JSON columns.
-- Match creation is not idempotent; repeated clicks can create duplicate analyses.
+- Match creation is idempotent when the client sends `Idempotency-Key`; ordinary requests without that header can still create new analyses.
 - No background worker exists for slow AI/API jobs.
 - External integration boundaries are not defined.
 - API logs include method, path, status, duration, and correlation ID, but broader application/event logging is still limited.

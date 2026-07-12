@@ -423,10 +423,13 @@ export async function updateMatchReview(
   return parseResponse<Analysis>(response, "Could not update candidate review.");
 }
 
-export async function createMatch(user: User, resumeId: number, jobPostId: number): Promise<Analysis> {
+export async function createMatch(user: User, resumeId: number, jobPostId: number, idempotencyKey?: string): Promise<Analysis> {
   const response = await fetch(`${API_URL}/matches`, {
     method: "POST",
-    headers: sessionHeaders(user),
+    headers: {
+      ...sessionHeaders(user),
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+    },
     body: JSON.stringify({ resume_id: resumeId, job_post_id: jobPostId }),
   });
   return parseResponse<Analysis>(response, "Could not analyze match.");

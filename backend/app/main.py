@@ -115,6 +115,8 @@ def initialize_database() -> None:
                 "recommendation": "TEXT DEFAULT 'Possible fit'",
                 "recruiter_status": "TEXT DEFAULT 'Maybe'",
                 "recruiter_notes": "TEXT DEFAULT ''",
+                "idempotency_key": "TEXT DEFAULT ''",
+                "idempotency_user_id": "INTEGER DEFAULT 0",
             }
             for column_name, ddl in analysis_columns.items():
                 if column_name not in columns:
@@ -1137,6 +1139,7 @@ def admin_remove_job(
 @app.post("/matches", response_model=AnalysisResult)
 def create_match(
     payload: MatchCreate,
+    idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> AnalysisResult:
@@ -1153,6 +1156,21 @@ def create_match(
         raise forbidden("Recruiters can only run matches for their own job posts.")
     if current_user.role not in {"candidate", "recruiter"}:
         raise forbidden("Unsupported user role.")
+
+    normalized_idempotency_key = (idempotency_key or "").strip()[:128]
+    if normalized_idempotency_key:
+        existing = (
+            db.query(Analysis)
+            .filter(
+                Analysis.idempotency_user_id == current_user.id,
+                Analysis.idempotency_key == normalized_idempotency_key,
+                Analysis.resume_id == resume.id,
+                Analysis.job_post_id == job_post.id,
+            )
+            .one_or_none()
+        )
+        if existing is not None:
+            return serialize_analysis(existing, include_private=current_user.role == "recruiter")
 
     job_text = job_analysis_text(job_post)
     result = ai_analysis(settings, resume.resume_text, job_text, language=current_user.language)
@@ -1179,6 +1197,8 @@ def create_match(
         interview_questions=json.dumps(recruiter_summary["interview_questions"]),
         recommendation=recruiter_summary["recommendation"],
         source=result["source"],
+        idempotency_key=normalized_idempotency_key,
+        idempotency_user_id=current_user.id if normalized_idempotency_key else 0,
     )
     db.add(row)
     db.commit()

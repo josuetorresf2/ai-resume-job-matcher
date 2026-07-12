@@ -129,6 +129,8 @@ class Analysis(Base):
     recruiter_notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     source: Mapped[str] = mapped_column(String(32), default="heuristic")
+    idempotency_key: Mapped[str] = mapped_column(String(128), default="")
+    idempotency_user_id: Mapped[int] = mapped_column(Integer, default=0, index=True)
 
     resume: Mapped[Resume] = relationship(back_populates="analyses")
     job_post: Mapped[JobPost] = relationship(back_populates="analyses")

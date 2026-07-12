@@ -196,6 +196,8 @@ Completed verification:
 
 ## Task 5: Add Idempotent Match Creation
 
+Status: completed in `Add idempotent match creation`.
+
 ### Goal
 
 Prevent duplicate analyses from repeated button clicks or retried requests.
@@ -230,6 +232,11 @@ ruff check app tests
 pytest
 DATABASE_URL=sqlite:////tmp/fairhire_idempotency.db alembic -c alembic.ini upgrade head
 ```
+
+Completed verification:
+
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest && rm -f /tmp/fairhire_idempotency.db && DATABASE_URL=sqlite:////tmp/fairhire_idempotency.db .venv/bin/alembic -c alembic.ini upgrade head`
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit && npm run build:vercel`
 
 ## Task 6: Define Normalized Job Data Model
 
