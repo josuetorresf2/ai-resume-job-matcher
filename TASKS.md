@@ -484,6 +484,8 @@ npm run e2e
 
 ## Task 12: Fix Frontend Docker Image
 
+Status: implemented in `Fix frontend Docker build`; local Docker smoke verification is blocked because `docker` is not installed on this machine.
+
 ### Goal
 
 Make the frontend container production-runnable.
@@ -515,6 +517,16 @@ docker compose up --build
 curl http://localhost:8000/health
 curl -I http://localhost:3000
 ```
+
+Completed verification:
+
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit && npm run build`
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest`
+
+Blocked verification:
+
+- `docker --version` failed with `zsh:1: command not found: docker`.
+- `docker compose up --build` could not be run until Docker Desktop/CLI is installed.
 
 ## Task 13: Add AWS-Ready Deployment Documentation
 

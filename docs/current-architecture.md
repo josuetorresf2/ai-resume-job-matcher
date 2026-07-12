@@ -388,7 +388,7 @@ Verified:
 
 - `docker-compose.yml` runs PostgreSQL, backend, and frontend locally.
 - Backend Dockerfile runs Alembic migrations before Uvicorn.
-- Frontend Dockerfile runs `npm install`, copies source, and uses `npm run start`; it assumes a prior Next build exists or should be adjusted before production container use.
+- Frontend Dockerfile runs `npm ci`, copies source, builds Next.js with `npm run build`, and starts with `npm run start`.
 - `render.yaml` deploys backend as Docker web service plus Render Postgres.
 - `frontend/vercel.json` builds frontend with `npm run build:vercel` and outputs `.next-vercel`.
 - Root `vercel.json` supports repository-root builds with `npm --prefix frontend run build:vercel`.
@@ -515,7 +515,6 @@ Verified or directly inferred from implementation:
 - API logs include method, path, status, duration, and correlation ID, but broader application/event logging is still limited.
 - Current CI verifies unit/API/build but not full local Docker boot or browser flows.
 - Vercel currently deploys the frontend only; live workflows depend on a deployed backend URL and correct CORS.
-- Docker frontend image uses `npm run start` but Dockerfile does not run `npm run build`, so container startup may fail unless built artifacts are present.
 
 ## Assumptions and Unknowns
 
