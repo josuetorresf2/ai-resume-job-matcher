@@ -163,10 +163,19 @@ export type RecruiterMetrics = {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+function createCorrelationId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `fairhire-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 function sessionHeaders(user?: User | null): HeadersInit {
-  if (!user) return { "Content-Type": "application/json" };
-  return {
+  const baseHeaders = {
     "Content-Type": "application/json",
+    "X-Correlation-ID": createCorrelationId(),
+  };
+  if (!user) return baseHeaders;
+  return {
+    ...baseHeaders,
     "X-User-Id": String(user.id),
     ...(user.access_token ? { Authorization: `Bearer ${user.access_token}` } : {}),
   };
@@ -214,7 +223,7 @@ export async function mockLogin(
 ): Promise<User> {
   const response = await fetch(`${API_URL}/auth/mock-login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: sessionHeaders(),
     body: JSON.stringify({ name, email, phone_number: phoneNumber, password, role, language, verification_channel: verificationChannel }),
   });
   return parseResponse<User>(response, "Could not start mock session.");

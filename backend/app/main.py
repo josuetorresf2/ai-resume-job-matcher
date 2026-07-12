@@ -1,7 +1,10 @@
 import json
+import logging
+import time
+import uuid
 from datetime import datetime
 from typing import Optional
-from fastapi import Depends, FastAPI, Header, HTTPException, UploadFile, File
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
@@ -70,6 +73,7 @@ from .verification import send_verification_message
 
 
 settings = get_settings()
+logger = logging.getLogger("fairhire.api")
 
 
 def initialize_database() -> None:
@@ -171,6 +175,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def correlation_id_middleware(request: Request, call_next):
+    correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
+    request.state.correlation_id = correlation_id
+    started_at = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
+    response.headers["X-Correlation-ID"] = correlation_id
+    logger.info(
+        json.dumps(
+            {
+                "event": "http_request",
+                "correlation_id": correlation_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": duration_ms,
+            },
+            separators=(",", ":"),
+        )
+    )
+    return response
 
 
 def forbidden(message: str) -> HTTPException:

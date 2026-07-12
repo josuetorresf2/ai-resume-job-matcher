@@ -97,6 +97,7 @@ Verified components:
 
 - Next.js frontend at `frontend/`.
 - FastAPI backend at `backend/app/main.py`.
+- API request tracing with `X-Correlation-ID` middleware in `backend/app/main.py`.
 - SQL database through SQLAlchemy models in `backend/app/models.py`.
 - Alembic migrations in `backend/alembic/versions/`.
 - OpenAI integration with heuristic fallback in `backend/app/analysis.py`.
@@ -119,7 +120,6 @@ Not found in the current implementation:
 - Retry/backoff framework.
 - Idempotency storage.
 - AWS infrastructure templates.
-- Structured JSON logging or correlation IDs.
 
 ## Database and Data Access
 
@@ -294,6 +294,7 @@ Verified from `frontend/lib/api.ts`:
 
 - The frontend reads `NEXT_PUBLIC_API_URL`, defaulting to `http://localhost:8000`.
 - JSON requests include `Content-Type: application/json`.
+- JSON requests include `X-Correlation-ID`.
 - Authenticated requests include both `X-User-Id` and, when available, `Authorization: Bearer <token>`.
 - File upload to `/resume-text` uses `FormData` without JSON headers.
 - Errors from FastAPI `detail` payloads are converted into readable frontend messages.
@@ -506,6 +507,7 @@ Verified or directly inferred from implementation:
 - Match creation is not idempotent; repeated clicks can create duplicate analyses.
 - No background worker exists for slow AI/API jobs.
 - External integration boundaries are not defined.
+- API logs include method, path, status, duration, and correlation ID, but broader application/event logging is still limited.
 - Current CI verifies unit/API/build but not full local Docker boot or browser flows.
 - Vercel currently deploys the frontend only; live workflows depend on a deployed backend URL and correct CORS.
 - Docker frontend image uses `npm run start` but Dockerfile does not run `npm run build`, so container startup may fail unless built artifacts are present.

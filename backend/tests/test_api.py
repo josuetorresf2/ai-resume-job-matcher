@@ -74,6 +74,14 @@ def test_health():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    assert response.headers["X-Correlation-ID"]
+
+
+def test_correlation_id_echoes_incoming_header():
+    response = client.get("/health", headers={"X-Correlation-ID": "test-correlation-123"})
+
+    assert response.status_code == 200
+    assert response.headers["X-Correlation-ID"] == "test-correlation-123"
 
 
 def test_login_rejects_fake_looking_email():

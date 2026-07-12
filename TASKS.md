@@ -52,6 +52,8 @@ Completed verification:
 
 ## Task 2: Add Correlation IDs and Structured Request Logging
 
+Status: completed in `Add correlation IDs to API requests`.
+
 ### Goal
 
 Add traceability for API calls before adding external automations.
@@ -91,6 +93,11 @@ npm run lint
 npm test
 npm run build:vercel
 ```
+
+Completed verification:
+
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest`
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit && npm run build:vercel`
 
 ## Task 3: Complete Recruiter Job Form Fields
 
