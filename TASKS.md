@@ -148,6 +148,8 @@ Completed verification:
 
 ## Task 4: Add Admin Review UI
 
+Status: completed in `Add admin review dashboard`.
+
 ### Goal
 
 Expose existing admin company and flagged-job backend functionality in the frontend.
@@ -184,6 +186,13 @@ npm run lint
 npm test
 npm run build:vercel
 ```
+
+Completed verification:
+
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit`
+- `cd frontend && npm run build:vercel`
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest`
+- Browser smoke test: landing exposes admin review access and the app still loads.
 
 ## Task 5: Add Idempotent Match Creation
 

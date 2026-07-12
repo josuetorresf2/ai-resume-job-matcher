@@ -32,12 +32,16 @@ import {
   getSalaryIntelligence,
   listRankedCandidates,
   listJobPosts,
+  listAdminCompanies,
+  listAdminFlaggedJobs,
   listMatches,
   listMyJobPosts,
   listResumes,
   mockLogin,
   publishJobPost,
   reportJobPost,
+  removeAdminJob,
+  reviewAdminCompany,
   saveCandidateProfile,
   saveRecruiterProfile,
   updateMatchReview,
@@ -116,6 +120,8 @@ const COPY = {
     verifyBy: "Verify by",
     recruiterRole: "I am a Recruiter",
     candidateRole: "I am a Candidate",
+    adminRole: "Admin review",
+    adminPerms: "Review company verification and remove flagged jobs.",
     continueAs: "Continue as",
     selectedRole: "selected role",
     formHint: "Select a role and create an account. Verification is a portfolio placeholder for email, SMS, or WhatsApp.",
@@ -206,6 +212,14 @@ const COPY = {
     noMatchYet: "No match yet",
     savedResumes: "Saved resumes",
     myJobPosts: "My job posts",
+    adminDashboard: "Admin review",
+    companiesForReview: "Companies for review",
+    flaggedJobs: "Flagged jobs",
+    approve: "Approve",
+    reject: "Reject",
+    removeJob: "Remove job",
+    noCompanies: "No companies to review.",
+    noFlaggedJobs: "No flagged jobs.",
     applications: "Applications",
     averageMatch: "Average match",
     profileStrength: "Profile strength",
@@ -274,6 +288,8 @@ const COPY = {
     verifyBy: "Verificar por",
     recruiterRole: "Soy reclutador",
     candidateRole: "Soy candidato",
+    adminRole: "Revision admin",
+    adminPerms: "Revisar verificacion de empresas y remover empleos reportados.",
     continueAs: "Continuar como",
     selectedRole: "rol seleccionado",
     formHint: "Selecciona un rol y crea una cuenta. La verificacion es un placeholder para email, SMS o WhatsApp.",
@@ -364,6 +380,14 @@ const COPY = {
     noMatchYet: "Sin match todavia",
     savedResumes: "Resumes guardados",
     myJobPosts: "Mis empleos",
+    adminDashboard: "Revision admin",
+    companiesForReview: "Empresas para revisar",
+    flaggedJobs: "Empleos reportados",
+    approve: "Aprobar",
+    reject: "Rechazar",
+    removeJob: "Remover empleo",
+    noCompanies: "No hay empresas para revisar.",
+    noFlaggedJobs: "No hay empleos reportados.",
     applications: "Aplicaciones",
     averageMatch: "Match promedio",
     profileStrength: "Fuerza del perfil",
@@ -612,8 +636,10 @@ export default function Home() {
         />
       ) : role === "candidate" ? (
         <CandidateDashboard user={user} c={c} />
-      ) : (
+      ) : role === "recruiter" ? (
         <RecruiterDashboard user={user} c={c} />
+      ) : (
+        <AdminDashboard user={user} c={c} />
       )}
     </main>
   );
@@ -667,7 +693,7 @@ function RoleSelection({
   onLogin: (role: Role) => Promise<void>;
 }) {
   const canLogin = Boolean(selectedRole) && !loading;
-  const selectedRoleLabel = selectedRole === "candidate" ? c.candidate : c.recruiter;
+  const selectedRoleLabel = selectedRole === "candidate" ? c.candidate : selectedRole === "admin" ? c.adminRole : c.recruiter;
   const normalizedSearch = jobSearch.trim().toLowerCase();
   const marketJobs = MARKET_JOBS[targetMarket];
   const previewJobs = normalizedSearch
@@ -693,6 +719,9 @@ function RoleSelection({
             <button className="role-choice" disabled={loading} onClick={() => setSelectedRole("candidate")}>
               <span>{c.candidateRole}</span>
               <small>{c.candidatePerms}</small>
+            </button>
+            <button className="secondary-action compact-action" disabled={loading} onClick={() => setSelectedRole("admin")}>
+              {c.adminRole}
             </button>
           </div>
         ) : (
@@ -1209,6 +1238,114 @@ function ProofLinks({ profile, c }: { profile: CandidateProfile; c: Copy }) {
         </a>
       ))}
     </div>
+  );
+}
+
+function AdminDashboard({ user, c }: { user: User; c: Copy }) {
+  const [companies, setCompanies] = useState<RecruiterProfile[]>([]);
+  const [flaggedJobs, setFlaggedJobs] = useState<JobPost[]>([]);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    refreshAdmin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id]);
+
+  async function refreshAdmin() {
+    setError("");
+    try {
+      const [nextCompanies, nextFlaggedJobs] = await Promise.all([
+        listAdminCompanies(user),
+        listAdminFlaggedJobs(user),
+      ]);
+      setCompanies(nextCompanies);
+      setFlaggedJobs(nextFlaggedJobs);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load admin review.");
+    }
+  }
+
+  async function reviewCompany(recruiterUserId: number, status: "verified" | "rejected") {
+    setLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      await reviewAdminCompany(user, recruiterUserId, status);
+      await refreshAdmin();
+      setNotice(status === "verified" ? "Company approved." : "Company rejected.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not review company.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function removeJob(jobPostId: number) {
+    setLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      await removeAdminJob(user, jobPostId);
+      await refreshAdmin();
+      setNotice("Flagged job removed.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove job.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <section className="workspace role-workspace">
+        <div className="panel input-panel">
+          <PanelTitle title={c.companiesForReview} subtitle={c.adminPerms} />
+          {companies.length ? companies.map((company) => (
+            <div className="history-card" key={company.user_id}>
+              <div>
+                <strong>{company.company || c.unknownCompany}</strong>
+                <p>{company.website || company.contact_email || company.description || c.noResults}</p>
+              </div>
+              <div className="trust-strip">
+                <span>{c.status}: {company.company_status}</span>
+                <span>{c.trust}: {company.trust_score}/100</span>
+              </div>
+              <div className="role-actions">
+                <button className="secondary-action compact-action" disabled={loading} onClick={() => reviewCompany(company.user_id, "verified")}>
+                  {c.approve}
+                </button>
+                <button className="secondary-action compact-action" disabled={loading} onClick={() => reviewCompany(company.user_id, "rejected")}>
+                  {c.reject}
+                </button>
+              </div>
+            </div>
+          )) : <p className="empty">{c.noCompanies}</p>}
+        </div>
+
+        <div className="panel result-panel">
+          <PanelTitle title={c.flaggedJobs} subtitle={c.actionBlocked} />
+          {flaggedJobs.length ? flaggedJobs.map((job) => (
+            <div className="history-card" key={job.id}>
+              <div>
+                <strong>{job.title}</strong>
+                <p>{job.company || c.unknownCompany} · {job.location || job.work_mode}</p>
+              </div>
+              <div className="trust-strip">
+                <span>{c.spam}: {job.spam_score}/100</span>
+                <span>{c.quality}: {job.quality_score}/100</span>
+                <span>{c.status}: {job.status}</span>
+              </div>
+              <button className="secondary-action compact-action" disabled={loading} onClick={() => removeJob(job.id)}>
+                {c.removeJob}
+              </button>
+            </div>
+          )) : <p className="empty">{c.noFlaggedJobs}</p>}
+        </div>
+      </section>
+      <StatusMessages error={error} notice={notice} c={c} />
+    </>
   );
 }
 

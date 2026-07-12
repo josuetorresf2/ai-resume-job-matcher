@@ -382,6 +382,33 @@ export async function listRankedCandidates(user: User, jobPostId: number): Promi
   return parseResponse<RankedCandidateMatch[]>(response, "Could not load ranked candidates.");
 }
 
+export async function listAdminCompanies(user: User): Promise<RecruiterProfile[]> {
+  const response = await fetch(`${API_URL}/admin/companies`, { headers: sessionHeaders(user), cache: "no-store" });
+  return parseResponse<RecruiterProfile[]>(response, "Could not load companies for review.");
+}
+
+export async function reviewAdminCompany(user: User, recruiterUserId: number, status: "verified" | "rejected"): Promise<RecruiterProfile> {
+  const response = await fetch(`${API_URL}/admin/companies/${recruiterUserId}/review`, {
+    method: "PUT",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ status }),
+  });
+  return parseResponse<RecruiterProfile>(response, "Could not review company.");
+}
+
+export async function listAdminFlaggedJobs(user: User): Promise<JobPost[]> {
+  const response = await fetch(`${API_URL}/admin/flagged-jobs`, { headers: sessionHeaders(user), cache: "no-store" });
+  return parseResponse<JobPost[]>(response, "Could not load flagged jobs.");
+}
+
+export async function removeAdminJob(user: User, jobPostId: number): Promise<void> {
+  const response = await fetch(`${API_URL}/admin/jobs/${jobPostId}`, {
+    method: "DELETE",
+    headers: sessionHeaders(user),
+  });
+  await parseResponse<{ status: string }>(response, "Could not remove job.");
+}
+
 export async function updateMatchReview(
   user: User,
   analysisId: number,
