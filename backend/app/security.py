@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import base64
 import json
+import os
 import re
 import time
 from typing import Optional
@@ -10,10 +11,35 @@ from urllib.parse import urlparse
 
 FAKE_EMAIL_DOMAINS = {"test.com", "fake.com", "example.invalid", "mailinator.com", "tempmail.com"}
 PHONE_PATTERN = re.compile(r"^\+[1-9]\d{7,14}$")
+PASSWORD_HASH_ITERATIONS = 260_000
+PASSWORD_HASH_PREFIX = "pbkdf2_sha256"
 
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    salt = os.urandom(16).hex()
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), PASSWORD_HASH_ITERATIONS)
+    digest_b64 = base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
+    return f"{PASSWORD_HASH_PREFIX}${PASSWORD_HASH_ITERATIONS}${salt}${digest_b64}"
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    if not password_hash:
+        return False
+    if password_hash.startswith(f"{PASSWORD_HASH_PREFIX}$"):
+        try:
+            _, iterations_raw, salt, expected_digest = password_hash.split("$", 3)
+            iterations = int(iterations_raw)
+        except ValueError:
+            return False
+        digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), iterations)
+        digest_b64 = base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
+        return hmac.compare_digest(digest_b64, expected_digest)
+    legacy_digest = hashlib.sha256(password.encode("utf-8")).hexdigest()
+    return hmac.compare_digest(legacy_digest, password_hash)
+
+
+def password_hash_needs_upgrade(password_hash: str) -> bool:
+    return not password_hash.startswith(f"{PASSWORD_HASH_PREFIX}${PASSWORD_HASH_ITERATIONS}$")
 
 
 def create_access_token(user_id: int, secret: str, expires_in_seconds: int = 60 * 60 * 24 * 7) -> str:

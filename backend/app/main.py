@@ -18,7 +18,9 @@ from .security import (
     is_valid_email,
     is_valid_phone_number,
     is_valid_website,
+    password_hash_needs_upgrade,
     verify_access_token,
+    verify_password,
 )
 from .schemas import (
     AdminCompanyReview,
@@ -186,9 +188,16 @@ def get_current_user(
         if token_user_id is None:
             raise HTTPException(status_code=401, detail="Invalid or expired access token.")
 
-    user_id = token_user_id or x_user_id
+    if token_user_id is not None:
+        user_id = token_user_id
+    elif x_user_id is not None and settings.auth_allow_test_header:
+        user_id = x_user_id
+    elif x_user_id is not None:
+        raise HTTPException(status_code=401, detail="X-User-Id test sessions are disabled. Use a bearer token.")
+    else:
+        user_id = None
     if user_id is None:
-        raise HTTPException(status_code=401, detail="Missing X-User-Id session header.")
+        raise HTTPException(status_code=401, detail="Missing bearer token.")
 
     user = db.get(User, user_id)
     if user is None:
@@ -415,9 +424,11 @@ def mock_login(payload: LoginRequest, db: Session = Depends(get_db)) -> UserResp
         db.refresh(user)
     elif user.role != payload.role:
         raise HTTPException(status_code=400, detail="This email is already registered with a different role.")
-    elif user.password_hash and user.password_hash != hash_password(payload.password):
+    elif user.password_hash and not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect password.")
     else:
+        if user.password_hash and password_hash_needs_upgrade(user.password_hash):
+            user.password_hash = hash_password(payload.password)
         if payload.name.strip():
             user.name = payload.name.strip()
         if payload.phone_number.strip():

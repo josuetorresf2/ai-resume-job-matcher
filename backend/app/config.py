@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     auth_secret_key: str = "change-me-in-production"
+    auth_allow_test_header: bool = False
     twilio_account_sid: Optional[str] = None
     twilio_auth_token: Optional[str] = None
     twilio_sms_from: Optional[str] = None

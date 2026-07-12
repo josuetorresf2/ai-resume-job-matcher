@@ -4,6 +4,8 @@ Each task is a small vertical slice. Do not combine unrelated tasks in one pull 
 
 ## Task 1: Harden Authentication and Session Boundaries
 
+Status: completed in `Harden auth session boundaries`.
+
 ### Goal
 
 Make authentication safer for production while preserving local/test developer workflows.
@@ -42,6 +44,11 @@ ruff check app tests
 pytest
 DATABASE_URL=sqlite:////tmp/fairhire_auth_check.db alembic -c alembic.ini upgrade head
 ```
+
+Completed verification:
+
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest && rm -f /tmp/fairhire_auth_check.db && DATABASE_URL=sqlite:////tmp/fairhire_auth_check.db .venv/bin/alembic -c alembic.ini upgrade head`
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit && npm run build:vercel`
 
 ## Task 2: Add Correlation IDs and Structured Request Logging
 

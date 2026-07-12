@@ -14,6 +14,8 @@ services:
         sync: false
       - key: AUTH_SECRET_KEY
         generateValue: true
+      - key: AUTH_ALLOW_TEST_HEADER
+        value: "false"
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL

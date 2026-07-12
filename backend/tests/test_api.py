@@ -1,12 +1,16 @@
 import os
 from pathlib import Path
+import hashlib
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_role_matcher.db"
+os.environ["AUTH_ALLOW_TEST_HEADER"] = "true"
 os.environ.pop("OPENAI_API_KEY", None)
 Path("test_role_matcher.db").unlink(missing_ok=True)
 
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
+from app.database import SessionLocal  # noqa: E402
+from app.models import User  # noqa: E402
 
 
 client = TestClient(app)
@@ -23,6 +27,10 @@ def login(email: str, role: str, name: str = "Test User", language: str = "en") 
 
 def headers(user: dict) -> dict[str, str]:
     return {"X-User-Id": str(user["id"])}
+
+
+def bearer_headers(user: dict) -> dict[str, str]:
+    return {"Authorization": f"Bearer {user['access_token']}"}
 
 
 def create_resume(user: dict, text: str = "Python FastAPI React Docker SQL resume with measurable outcomes.") -> dict:
@@ -80,10 +88,72 @@ def test_login_rejects_fake_looking_email():
 def test_login_returns_bearer_token_for_authenticated_requests():
     user = login("candidate-token@example.com", "candidate", "Candidate")
 
-    response = client.get("/me", headers={"Authorization": f"Bearer {user['access_token']}"})
+    response = client.get("/me", headers=bearer_headers(user))
 
     assert response.status_code == 200
     assert response.json()["email"] == "candidate-token@example.com"
+
+
+def test_x_user_id_header_is_rejected_when_test_header_mode_is_disabled():
+    user = login("candidate-test-header-disabled@example.com", "candidate", "Candidate")
+
+    from app import main  # noqa: PLC0415
+
+    previous = main.settings.auth_allow_test_header
+    main.settings.auth_allow_test_header = False
+    try:
+        response = client.get("/me", headers=headers(user))
+    finally:
+        main.settings.auth_allow_test_header = previous
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "X-User-Id test sessions are disabled. Use a bearer token."
+
+
+def test_x_user_id_header_works_when_test_header_mode_is_enabled():
+    user = login("candidate-test-header-enabled@example.com", "candidate", "Candidate")
+
+    response = client.get("/me", headers=headers(user))
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "candidate-test-header-enabled@example.com"
+
+
+def test_login_rejects_wrong_password():
+    login("wrong-credentials@example.com", "candidate", "Candidate")
+
+    response = client.post(
+        "/auth/mock-login",
+        json={"name": "Candidate", "email": "wrong-credentials@example.com", "password": "WrongPass123", "role": "candidate"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Incorrect password."
+
+
+def test_login_upgrades_legacy_sha256_password_hash():
+    legacy_hash = hashlib.sha256("StrongPass123".encode("utf-8")).hexdigest()
+    with SessionLocal() as db:
+        user = User(
+            name="Legacy Candidate",
+            email="legacy-user@example.com",
+            password_hash=legacy_hash,
+            role="candidate",
+            language="en",
+        )
+        db.add(user)
+        db.commit()
+
+    response = client.post(
+        "/auth/mock-login",
+        json={"name": "Legacy Candidate", "email": "legacy-user@example.com", "password": "StrongPass123", "role": "candidate"},
+    )
+
+    assert response.status_code == 200
+    with SessionLocal() as db:
+        upgraded = db.query(User).filter(User.email == "legacy-user@example.com").one()
+        assert upgraded.password_hash.startswith("pbkdf2_sha256$")
+        assert upgraded.password_hash != legacy_hash
 
 
 def test_login_reuses_existing_user_by_normalized_email():

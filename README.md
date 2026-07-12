@@ -152,6 +152,7 @@ DATABASE_URL=postgresql+psycopg://fairhire:fairhire@localhost:5432/fairhire
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 NEXT_PUBLIC_API_URL=http://localhost:8000
 AUTH_SECRET_KEY=change-this-before-deploy
+AUTH_ALLOW_TEST_HEADER=false
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_SMS_FROM=
@@ -159,6 +160,8 @@ TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 ```
 
 The backend still works without an OpenAI key by using local heuristic analysis.
+
+`AUTH_ALLOW_TEST_HEADER=false` is the production-safe default. Set it to `true` only in local automated tests if you need the legacy `X-User-Id` test session header. Normal browser/API clients should use the bearer token returned by `/auth/mock-login`.
 
 ## Running Locally
 
