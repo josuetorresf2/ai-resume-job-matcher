@@ -102,7 +102,7 @@ Verified components:
 - Alembic migrations in `backend/alembic/versions/`.
 - OpenAI integration with heuristic fallback in `backend/app/analysis.py`.
 - PDF/TXT resume text extraction in `backend/app/resume_parser.py`.
-- Job connector boundary with a controlled mock provider and Remotive public API provider in `backend/app/job_connectors.py`.
+- Job connector boundary with a controlled mock provider, Remotive public API provider, shared retry policy, and throttle-aware HTTP client in `backend/app/job_connectors.py`.
 - Job import service in `backend/app/job_imports.py`.
 - Trust/safety scoring in `backend/app/trust.py`.
 - Verification messaging placeholder/Twilio sender in `backend/app/verification.py`.
@@ -485,7 +485,6 @@ Verified gaps:
 - Remotive imports store source provider, external id, and external URL for attribution/link-back.
 - Match creation supports an optional `Idempotency-Key` header scoped to the current user, resume, and job post.
 - No idempotency for job imports or external requests.
-- No request throttling or retry policies.
 - No AWS-ready infrastructure files.
 
 ## Security Weaknesses

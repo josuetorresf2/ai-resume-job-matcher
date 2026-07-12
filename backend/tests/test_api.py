@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import hashlib
+import httpx
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_role_matcher.db"
 os.environ["AUTH_ALLOW_TEST_HEADER"] = "true"
@@ -10,7 +11,7 @@ Path("test_role_matcher.db").unlink(missing_ok=True)
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
-from app.job_connectors import MockJobConnector, NormalizedJobInput, RemotiveJobConnector  # noqa: E402
+from app.job_connectors import ConnectorHttpClient, MockJobConnector, NormalizedJobInput, RemotiveJobConnector, RetryPolicy  # noqa: E402
 from app.models import User  # noqa: E402
 
 
@@ -317,6 +318,74 @@ def test_remotive_connector_normalizes_provider_payload():
     assert jobs[0].work_mode == "remote"
     assert "Python" in jobs[0].required_skills
     assert "Source: Remotive" in jobs[0].description
+
+
+def test_connector_http_client_retries_5xx_without_real_sleep():
+    calls = []
+    sleeps = []
+
+    def fake_get(*args, **kwargs):
+        calls.append((args, kwargs))
+        if len(calls) == 1:
+            return httpx.Response(503, json={"error": "temporary"})
+        return httpx.Response(200, json={"jobs": []})
+
+    client_with_retry = ConnectorHttpClient(
+        RetryPolicy(max_attempts=2, backoff_seconds=0.25, throttle_seconds=0),
+        get=fake_get,
+        sleep=sleeps.append,
+    )
+
+    payload = client_with_retry.request_json("https://example.com/jobs", params={"search": "python"}, timeout=1)
+
+    assert payload == {"jobs": []}
+    assert len(calls) == 2
+    assert sleeps == [0.25]
+
+
+def test_connector_http_client_does_not_retry_non_retryable_4xx():
+    calls = []
+
+    def fake_get(*args, **kwargs):
+        calls.append((args, kwargs))
+        return httpx.Response(404, request=httpx.Request("GET", "https://example.com/jobs"))
+
+    client_without_retry = ConnectorHttpClient(
+        RetryPolicy(max_attempts=3, backoff_seconds=0, throttle_seconds=0),
+        get=fake_get,
+        sleep=lambda _: None,
+    )
+
+    try:
+        client_without_retry.request_json("https://example.com/jobs", params={}, timeout=1)
+    except httpx.HTTPStatusError as exc:
+        assert exc.response.status_code == 404
+    else:
+        raise AssertionError("Expected HTTPStatusError for 404.")
+    assert len(calls) == 1
+
+
+def test_connector_http_client_handles_429_retry_after_without_real_sleep():
+    calls = []
+    sleeps = []
+
+    def fake_get(*args, **kwargs):
+        calls.append((args, kwargs))
+        if len(calls) == 1:
+            return httpx.Response(429, headers={"Retry-After": "2"}, json={"error": "rate limited"})
+        return httpx.Response(200, json={"jobs": []})
+
+    throttled_client = ConnectorHttpClient(
+        RetryPolicy(max_attempts=2, backoff_seconds=0.1, throttle_seconds=0),
+        get=fake_get,
+        sleep=sleeps.append,
+    )
+
+    payload = throttled_client.request_json("https://example.com/jobs", params={}, timeout=1)
+
+    assert payload == {"jobs": []}
+    assert len(calls) == 2
+    assert sleeps == [2.0]
 
 
 def test_admin_can_import_mock_jobs_and_public_jobs_list_when_published():

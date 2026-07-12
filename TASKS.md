@@ -371,6 +371,8 @@ Completed verification:
 
 ## Task 9: Add Request Throttling and Retry Policy for Connectors
 
+Status: completed in `Add connector retry and throttle policy`.
+
 ### Goal
 
 Make external API usage respectful and resilient.
@@ -404,6 +406,12 @@ cd backend
 ruff check app tests
 pytest
 ```
+
+Completed verification:
+
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest`
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit && npm run build:vercel`
+- Tests inject fake sleep functions, so retry/backoff checks do not create real delays.
 
 ## Task 10: Add Temporal Workflow for Job Imports
 
