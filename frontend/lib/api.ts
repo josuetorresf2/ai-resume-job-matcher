@@ -69,6 +69,7 @@ export type JobPost = {
   source_type: string;
   source_provider: string;
   external_id: string;
+  external_url: string;
   canonical_title: string;
   canonical_company: string;
   canonical_location: string;

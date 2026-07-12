@@ -1,5 +1,9 @@
 from dataclasses import dataclass
+import html
+import re
 from typing import Protocol
+
+import httpx
 
 
 @dataclass(frozen=True)
@@ -15,6 +19,7 @@ class NormalizedJobInput:
     description: str
     source_provider: str
     external_id: str
+    external_url: str = ""
 
 
 class JobConnector(Protocol):
@@ -44,6 +49,7 @@ class MockJobConnector:
                 ),
                 source_provider=self.provider,
                 external_id="mock-python-automation-001",
+                external_url="https://example.com/jobs/mock-python-automation-001",
             ),
             NormalizedJobInput(
                 title="React Frontend Engineer",
@@ -60,5 +66,50 @@ class MockJobConnector:
                 ),
                 source_provider=self.provider,
                 external_id="mock-react-frontend-002",
+                external_url="https://example.com/jobs/mock-react-frontend-002",
             ),
         ]
+
+
+class RemotiveJobConnector:
+    provider = "remotive"
+    endpoint = "https://remotive.com/api/remote-jobs"
+
+    def __init__(self, query: str = "python", limit: int = 5, timeout_seconds: float = 10.0) -> None:
+        self.query = query
+        self.limit = limit
+        self.timeout_seconds = timeout_seconds
+
+    def fetch_jobs(self) -> list[NormalizedJobInput]:
+        response = httpx.get(self.endpoint, params={"search": self.query}, timeout=self.timeout_seconds)
+        response.raise_for_status()
+        payload = response.json()
+        return self.from_payload(payload, limit=self.limit)
+
+    def from_payload(self, payload: dict, limit: int = 5) -> list[NormalizedJobInput]:
+        jobs = payload.get("jobs", [])
+        if not isinstance(jobs, list):
+            raise ValueError("Remotive payload must include a jobs list.")
+        return [self.normalize_job(job) for job in jobs[:limit] if isinstance(job, dict)]
+
+    def normalize_job(self, job: dict) -> NormalizedJobInput:
+        required = ["id", "title", "company_name", "url", "description"]
+        missing = [field for field in required if not job.get(field)]
+        if missing:
+            raise ValueError(f"Remotive job is missing required fields: {', '.join(missing)}")
+        description = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", str(job["description"])))).strip()
+        tags = job.get("tags") if isinstance(job.get("tags"), list) else []
+        return NormalizedJobInput(
+            title=str(job["title"]),
+            company=str(job["company_name"]),
+            location=str(job.get("candidate_required_location") or "Remote"),
+            work_mode="remote",
+            salary_range=str(job.get("salary") or ""),
+            experience_level=str(job.get("job_type") or ""),
+            required_skills=", ".join(str(tag) for tag in tags[:8]),
+            nice_to_have_skills="",
+            description=f"{description}\n\nSource: Remotive {job['url']}",
+            source_provider=self.provider,
+            external_id=str(job["id"]),
+            external_url=str(job["url"]),
+        )

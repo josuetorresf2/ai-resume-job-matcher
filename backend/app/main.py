@@ -4,6 +4,7 @@ import time
 import uuid
 from datetime import datetime
 from typing import Optional
+import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
@@ -13,7 +14,7 @@ from .analysis import ai_analysis, build_recruiter_summary
 from .config import get_settings
 from .database import Base, engine, get_db
 from .models import Analysis, Candidate, JobPost, JobReport, Recruiter, Resume, User
-from .job_connectors import MockJobConnector
+from .job_connectors import MockJobConnector, RemotiveJobConnector
 from .job_imports import import_jobs_from_connector
 from .job_normalization import apply_normalized_job_fields
 from .resume_parser import extract_pdf_text, extract_text_file
@@ -102,6 +103,7 @@ def initialize_database() -> None:
                 "source_type": "TEXT DEFAULT 'internal'",
                 "source_provider": "TEXT DEFAULT 'fairhire'",
                 "external_id": "TEXT DEFAULT ''",
+                "external_url": "TEXT DEFAULT ''",
                 "canonical_title": "TEXT DEFAULT ''",
                 "canonical_company": "TEXT DEFAULT ''",
                 "canonical_location": "TEXT DEFAULT ''",
@@ -410,6 +412,7 @@ def serialize_job(job: JobPost) -> JobPostResponse:
         source_type=job.source_type,
         source_provider=job.source_provider,
         external_id=job.external_id,
+        external_url=job.external_url,
         canonical_title=job.canonical_title,
         canonical_company=job.canonical_company,
         canonical_location=job.canonical_location,
@@ -1156,6 +1159,26 @@ def import_mock_jobs(
     require_admin(current_user)
     connector = MockJobConnector()
     imported, skipped = import_jobs_from_connector(db, connector, owner_user_id=current_user.id, publish=payload.publish)
+    return JobImportResponse(
+        provider=connector.provider,
+        imported_count=len(imported),
+        skipped_count=skipped,
+        jobs=[serialize_job(job) for job in imported],
+    )
+
+
+@app.post("/admin/job-imports/remotive", response_model=JobImportResponse)
+def import_remotive_jobs(
+    payload: JobImportRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> JobImportResponse:
+    require_admin(current_user)
+    connector = RemotiveJobConnector(query=payload.query, limit=payload.limit)
+    try:
+        imported, skipped = import_jobs_from_connector(db, connector, owner_user_id=current_user.id, publish=payload.publish)
+    except (ValueError, httpx.HTTPError) as exc:
+        raise HTTPException(status_code=502, detail=f"Remotive import failed: {exc}") from exc
     return JobImportResponse(
         provider=connector.provider,
         imported_count=len(imported),

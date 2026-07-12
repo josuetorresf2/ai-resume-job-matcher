@@ -56,6 +56,7 @@ The project is production-oriented: PostgreSQL-ready persistence, SQLAlchemy mig
 - Candidate privacy controls
 - Suspicious job reporting
 - Admin routes for company review and flagged job moderation
+- Job import connector boundary with mock imports and Remotive public API integration
 - Low-bandwidth preference
 - PostgreSQL deployment path with Alembic migrations
 - CI/CD checks for backend tests, linting, migrations, frontend tests, and build verification
@@ -283,7 +284,11 @@ GET  /recruiter/metrics
 GET  /recruiter/dashboard
 POST /job-posts/{job_post_id}/publish
 PUT  /admin/companies/{recruiter_user_id}/review
+POST /admin/job-imports/mock
+POST /admin/job-imports/remotive
 ```
+
+Remotive imports use the documented public Remotive remote jobs API and store provider metadata plus source URLs for attribution.
 
 ## CI/CD
 

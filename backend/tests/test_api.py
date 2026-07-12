@@ -10,7 +10,7 @@ Path("test_role_matcher.db").unlink(missing_ok=True)
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
-from app.job_connectors import MockJobConnector  # noqa: E402
+from app.job_connectors import MockJobConnector, NormalizedJobInput, RemotiveJobConnector  # noqa: E402
 from app.models import User  # noqa: E402
 
 
@@ -75,6 +75,7 @@ def assert_normalized_job_defaults(job: dict) -> None:
     assert job["source_type"] == "internal"
     assert job["source_provider"] == "fairhire"
     assert job["external_id"] == ""
+    assert job["external_url"] == ""
     assert job["canonical_title"] == job["title"].lower()
     assert job["canonical_company"] == job["company"].lower()
     assert job["canonical_location"] == job["location"].lower()
@@ -290,6 +291,34 @@ def test_mock_job_connector_returns_normalized_jobs():
     assert len(jobs[0].description) >= 20
 
 
+def test_remotive_connector_normalizes_provider_payload():
+    payload = {
+        "jobs": [
+            {
+                "id": 123,
+                "title": "API Automation Engineer",
+                "company_name": "Remote Co",
+                "candidate_required_location": "Worldwide",
+                "salary": "$2000-$3000",
+                "job_type": "full_time",
+                "tags": ["Python", "REST", "Automation"],
+                "url": "https://remotive.com/remote-jobs/software-dev/api-automation-engineer-123",
+                "description": "<p>You will build documented API workflows.</p>",
+            }
+        ]
+    }
+
+    jobs = RemotiveJobConnector().from_payload(payload)
+
+    assert len(jobs) == 1
+    assert jobs[0].source_provider == "remotive"
+    assert jobs[0].external_id == "123"
+    assert jobs[0].external_url.startswith("https://remotive.com/")
+    assert jobs[0].work_mode == "remote"
+    assert "Python" in jobs[0].required_skills
+    assert "Source: Remotive" in jobs[0].description
+
+
 def test_admin_can_import_mock_jobs_and_public_jobs_list_when_published():
     admin = login("admin-import@example.com", "admin", "Admin")
 
@@ -318,6 +347,48 @@ def test_non_admin_cannot_import_mock_jobs():
 
     assert response.status_code == 403
     assert response.json()["detail"] == "Only admins can perform this action."
+
+
+def test_admin_can_import_remotive_jobs_with_mocked_connector(monkeypatch):
+    class FakeRemotiveConnector:
+        provider = "remotive"
+
+        def __init__(self, query: str = "python", limit: int = 5) -> None:
+            self.query = query
+            self.limit = limit
+
+        def fetch_jobs(self) -> list[NormalizedJobInput]:
+            return [
+                NormalizedJobInput(
+                    title="Python API Integrations Engineer",
+                    company="Remote Source Co",
+                    location="Remote LATAM",
+                    work_mode="remote",
+                    salary_range="$2200-$3200",
+                    experience_level="Mid-level",
+                    required_skills="Python, REST APIs, Testing",
+                    nice_to_have_skills="Docker",
+                    description="Build reliable public API integrations with retries, tests, and clear operational docs.",
+                    source_provider="remotive",
+                    external_id="remotive-test-001",
+                    external_url="https://remotive.com/remote-jobs/software-dev/python-api-integrations-engineer",
+                )
+            ]
+
+    from app import main  # noqa: PLC0415
+
+    monkeypatch.setattr(main, "RemotiveJobConnector", FakeRemotiveConnector)
+    admin = login("admin-remotive-import@example.com", "admin", "Admin")
+
+    response = client.post("/admin/job-imports/remotive", headers=headers(admin), json={"publish": True, "query": "python", "limit": 1})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["provider"] == "remotive"
+    assert data["imported_count"] == 1
+    assert data["jobs"][0]["source_provider"] == "remotive"
+    assert data["jobs"][0]["external_url"].startswith("https://remotive.com/")
+    assert data["jobs"][0]["canonical_salary_min"] == 2200
 
 
 def test_updating_job_refreshes_normalized_fields():

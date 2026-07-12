@@ -327,6 +327,8 @@ Completed verification:
 
 ## Task 8: Add One Public Job API Integration
 
+Status: completed in `Add Remotive job API connector`.
+
 ### Goal
 
 Demonstrate real REST API integration using the connector boundary.
@@ -360,6 +362,12 @@ cd backend
 ruff check app tests
 pytest
 ```
+
+Completed verification:
+
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest && rm -f /tmp/fairhire_remotive.db && DATABASE_URL=sqlite:////tmp/fairhire_remotive.db .venv/bin/alembic -c alembic.ini upgrade head`
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit && npm run build:vercel`
+- Tests mock Remotive network calls; CI does not require live internet.
 
 ## Task 9: Add Request Throttling and Retry Policy for Connectors
 

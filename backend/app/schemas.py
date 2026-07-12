@@ -170,6 +170,7 @@ class JobPostResponse(BaseModel):
     source_type: str
     source_provider: str
     external_id: str
+    external_url: str
     canonical_title: str
     canonical_company: str
     canonical_location: str
@@ -205,6 +206,8 @@ class AdminCompanyReview(BaseModel):
 
 class JobImportRequest(BaseModel):
     publish: bool = False
+    query: str = "python"
+    limit: int = Field(default=5, ge=1, le=20)
 
 
 class JobImportResponse(BaseModel):

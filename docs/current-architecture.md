@@ -102,7 +102,7 @@ Verified components:
 - Alembic migrations in `backend/alembic/versions/`.
 - OpenAI integration with heuristic fallback in `backend/app/analysis.py`.
 - PDF/TXT resume text extraction in `backend/app/resume_parser.py`.
-- Job connector boundary with a controlled mock provider in `backend/app/job_connectors.py`.
+- Job connector boundary with a controlled mock provider and Remotive public API provider in `backend/app/job_connectors.py`.
 - Job import service in `backend/app/job_imports.py`.
 - Trust/safety scoring in `backend/app/trust.py`.
 - Verification messaging placeholder/Twilio sender in `backend/app/verification.py`.
@@ -481,7 +481,8 @@ Verified gaps:
 - Career coach is heuristic and does not persist plans.
 - Ranked candidates backend exists, but recruiter UI does not expose a ranked-candidate page.
 - Mock job-provider imports are available through admin endpoint `POST /admin/job-imports/mock`.
-- No real external job-provider imports.
+- Remotive public API imports are available through admin endpoint `POST /admin/job-imports/remotive`.
+- Remotive imports store source provider, external id, and external URL for attribution/link-back.
 - Match creation supports an optional `Idempotency-Key` header scoped to the current user, resume, and job post.
 - No idempotency for job imports or external requests.
 - No request throttling or retry policies.

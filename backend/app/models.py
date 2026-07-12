@@ -96,6 +96,7 @@ class JobPost(Base):
     source_type: Mapped[str] = mapped_column(String(32), default="internal")
     source_provider: Mapped[str] = mapped_column(String(80), default="fairhire")
     external_id: Mapped[str] = mapped_column(String(180), default="")
+    external_url: Mapped[str] = mapped_column(String(500), default="")
     canonical_title: Mapped[str] = mapped_column(String(180), default="")
     canonical_company: Mapped[str] = mapped_column(String(180), default="")
     canonical_location: Mapped[str] = mapped_column(String(180), default="")

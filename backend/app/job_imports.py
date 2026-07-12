@@ -57,10 +57,11 @@ def import_jobs_from_connector(
             required_skills=job.required_skills,
             nice_to_have_skills=job.nice_to_have_skills,
             description=job.description,
-            source_type="external",
-            source_provider=job.source_provider,
-            external_id=job.external_id,
-            status="published" if publish else "draft",
+                source_type="external",
+                source_provider=job.source_provider,
+                external_id=job.external_id,
+                external_url=job.external_url,
+                status="published" if publish else "draft",
         )
         apply_normalized_job_fields(row)
         company_complete = company_profile_complete(owner_profile)
