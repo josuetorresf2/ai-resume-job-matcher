@@ -203,6 +203,17 @@ class AdminCompanyReview(BaseModel):
     status: str = Field(..., pattern="^(verified|rejected)$")
 
 
+class JobImportRequest(BaseModel):
+    publish: bool = False
+
+
+class JobImportResponse(BaseModel):
+    provider: str
+    imported_count: int
+    skipped_count: int
+    jobs: list[JobPostResponse]
+
+
 class MatchCreate(BaseModel):
     resume_id: int
     job_post_id: int

@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 import time
 import uuid
 from datetime import datetime
@@ -14,6 +13,9 @@ from .analysis import ai_analysis, build_recruiter_summary
 from .config import get_settings
 from .database import Base, engine, get_db
 from .models import Analysis, Candidate, JobPost, JobReport, Recruiter, Resume, User
+from .job_connectors import MockJobConnector
+from .job_imports import import_jobs_from_connector
+from .job_normalization import apply_normalized_job_fields
 from .resume_parser import extract_pdf_text, extract_text_file
 from .security import (
     company_email_matches_website,
@@ -47,6 +49,8 @@ from .schemas import (
     JobPostResponse,
     JobPostUpdate,
     JobDashboardItem,
+    JobImportRequest,
+    JobImportResponse,
     LoginRequest,
     MatchCreate,
     MatchReviewUpdate,
@@ -279,35 +283,6 @@ def job_analysis_text(job_post: JobPost) -> str:
             job_post.description,
         ]
     )
-
-
-def normalize_skill_list(value: str) -> list[str]:
-    return sorted({item.strip().lower() for item in value.split(",") if item.strip()})
-
-
-def parse_salary_range(value: str) -> tuple[int, int, str]:
-    amounts = [int(part.replace(",", "")) for part in re.findall(r"\d[\d,]*", value or "")]
-    currency = "USD" if "$" in (value or "") else "USD"
-    if not amounts:
-        return 0, 0, currency
-    if len(amounts) == 1:
-        return amounts[0], amounts[0], currency
-    return min(amounts[0], amounts[1]), max(amounts[0], amounts[1]), currency
-
-
-def apply_normalized_job_fields(job: JobPost) -> None:
-    salary_min, salary_max, currency = parse_salary_range(job.salary_range)
-    job.source_type = job.source_type or "internal"
-    job.source_provider = job.source_provider or "fairhire"
-    job.external_id = job.external_id or ""
-    job.canonical_title = job.title.strip().lower()
-    job.canonical_company = job.company.strip().lower()
-    job.canonical_location = job.location.strip().lower()
-    job.canonical_remote = 1 if job.work_mode == "remote" else 0
-    job.canonical_salary_min = salary_min
-    job.canonical_salary_max = salary_max
-    job.canonical_currency = currency
-    job.canonical_skills = json.dumps(normalize_skill_list(", ".join([job.required_skills, job.nice_to_have_skills])))
 
 
 def company_profile_complete(profile: Recruiter) -> bool:
@@ -1170,6 +1145,23 @@ def admin_remove_job(
     db.delete(row)
     db.commit()
     return {"status": "removed"}
+
+
+@app.post("/admin/job-imports/mock", response_model=JobImportResponse)
+def import_mock_jobs(
+    payload: JobImportRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> JobImportResponse:
+    require_admin(current_user)
+    connector = MockJobConnector()
+    imported, skipped = import_jobs_from_connector(db, connector, owner_user_id=current_user.id, publish=payload.publish)
+    return JobImportResponse(
+        provider=connector.provider,
+        imported_count=len(imported),
+        skipped_count=skipped,
+        jobs=[serialize_job(job) for job in imported],
+    )
 
 
 @app.post("/matches", response_model=AnalysisResult)

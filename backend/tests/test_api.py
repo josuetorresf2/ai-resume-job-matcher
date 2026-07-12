@@ -10,6 +10,7 @@ Path("test_role_matcher.db").unlink(missing_ok=True)
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
+from app.job_connectors import MockJobConnector  # noqa: E402
 from app.models import User  # noqa: E402
 
 
@@ -277,6 +278,46 @@ def test_recruiter_created_job_has_normalized_defaults():
     job = create_job(recruiter)
 
     assert_normalized_job_defaults(job)
+
+
+def test_mock_job_connector_returns_normalized_jobs():
+    jobs = MockJobConnector().fetch_jobs()
+
+    assert len(jobs) == 2
+    assert jobs[0].source_provider == "mock_public_jobs"
+    assert jobs[0].external_id
+    assert jobs[0].work_mode in {"remote", "hybrid", "onsite"}
+    assert len(jobs[0].description) >= 20
+
+
+def test_admin_can_import_mock_jobs_and_public_jobs_list_when_published():
+    admin = login("admin-import@example.com", "admin", "Admin")
+
+    imported = client.post("/admin/job-imports/mock", headers=headers(admin), json={"publish": True})
+    imported_again = client.post("/admin/job-imports/mock", headers=headers(admin), json={"publish": True})
+    public_jobs = client.get("/job-posts")
+
+    assert imported.status_code == 200
+    assert imported.json()["provider"] == "mock_public_jobs"
+    assert imported.json()["imported_count"] == 2
+    assert imported.json()["skipped_count"] == 0
+    assert imported.json()["jobs"][0]["source_type"] == "external"
+    assert imported.json()["jobs"][0]["source_provider"] == "mock_public_jobs"
+    assert imported.json()["jobs"][0]["canonical_title"]
+    assert imported_again.status_code == 200
+    assert imported_again.json()["imported_count"] == 0
+    assert imported_again.json()["skipped_count"] == 2
+    assert public_jobs.status_code == 200
+    assert any(job["source_provider"] == "mock_public_jobs" for job in public_jobs.json())
+
+
+def test_non_admin_cannot_import_mock_jobs():
+    recruiter = login("recruiter-import-denied@example.com", "recruiter", "Recruiter")
+
+    response = client.post("/admin/job-imports/mock", headers=headers(recruiter), json={"publish": True})
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Only admins can perform this action."
 
 
 def test_updating_job_refreshes_normalized_fields():

@@ -284,6 +284,8 @@ Completed verification:
 
 ## Task 7: Add External Job Connector Interface With Mock Provider
 
+Status: completed in `Add mock job connector import path`.
+
 ### Goal
 
 Create the boundary for public API integrations without scraping.
@@ -317,6 +319,11 @@ cd backend
 ruff check app tests
 pytest
 ```
+
+Completed verification:
+
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest`
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit && npm run build:vercel`
 
 ## Task 8: Add One Public Job API Integration
 
