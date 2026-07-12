@@ -208,6 +208,8 @@ Recommended free-first path:
 
 This repo keeps the frontend and backend deployable separately. The frontend can go live first, but the AI/job workflows need `NEXT_PUBLIC_API_URL` set to the deployed backend URL.
 
+AWS-ready production architecture is documented in [docs/aws-deployment.md](docs/aws-deployment.md).
+
 ### Backend: Render
 
 This repo includes `render.yaml`.

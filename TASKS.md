@@ -530,6 +530,8 @@ Blocked verification:
 
 ## Task 13: Add AWS-Ready Deployment Documentation
 
+Status: completed in `Document AWS deployment architecture`.
+
 ### Goal
 
 Document production deployment architecture without requiring AWS credentials.
@@ -558,3 +560,7 @@ Recruiters/hiring managers can see how FairHire would run on AWS.
 ```bash
 sed -n '1,240p' docs/aws-deployment.md
 ```
+
+Completed verification:
+
+- `sed -n '1,240p' docs/aws-deployment.md`

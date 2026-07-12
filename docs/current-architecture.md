@@ -485,7 +485,7 @@ Verified gaps:
 - Remotive imports store source provider, external id, and external URL for attribution/link-back.
 - Match creation supports an optional `Idempotency-Key` header scoped to the current user, resume, and job post.
 - No idempotency for job imports or external requests.
-- No AWS-ready infrastructure files.
+- AWS-ready deployment architecture is documented in `docs/aws-deployment.md`, but no Terraform/CDK/CloudFormation files exist yet.
 
 ## Security Weaknesses
 
