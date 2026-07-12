@@ -518,6 +518,7 @@ export default function Home() {
   const [verificationChannel, setVerificationChannel] = useState<"email" | "sms" | "whatsapp">("email");
   const [jobSearch, setJobSearch] = useState("");
   const [targetMarket, setTargetMarket] = useState<TargetMarket>("latin-america");
+  const [adminMode, setAdminMode] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const c = LOCALIZED_COPY[user?.language ?? language];
@@ -525,6 +526,10 @@ export default function Home() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    setAdminMode(new URLSearchParams(window.location.search).get("admin") === "1");
+  }, []);
 
   async function onLogin(selectedRole: Role) {
     setError("");
@@ -633,6 +638,7 @@ export default function Home() {
           setTargetMarket={setTargetMarket}
           setSelectedRole={setSelectedRole}
           onLogin={onLogin}
+          adminMode={adminMode}
         />
       ) : role === "candidate" ? (
         <CandidateDashboard user={user} c={c} />
@@ -668,6 +674,7 @@ function RoleSelection({
   setTargetMarket,
   setSelectedRole,
   onLogin,
+  adminMode,
 }: {
   name: string;
   email: string;
@@ -691,6 +698,7 @@ function RoleSelection({
   setTargetMarket: (value: TargetMarket) => void;
   setSelectedRole: (value: Role | null) => void;
   onLogin: (role: Role) => Promise<void>;
+  adminMode: boolean;
 }) {
   const canLogin = Boolean(selectedRole) && !loading;
   const selectedRoleLabel = selectedRole === "candidate" ? c.candidate : selectedRole === "admin" ? c.adminRole : c.recruiter;
@@ -720,9 +728,11 @@ function RoleSelection({
               <span>{c.candidateRole}</span>
               <small>{c.candidatePerms}</small>
             </button>
-            <button className="secondary-action compact-action" disabled={loading} onClick={() => setSelectedRole("admin")}>
-              {c.adminRole}
-            </button>
+            {adminMode ? (
+              <button className="secondary-action compact-action" disabled={loading} onClick={() => setSelectedRole("admin")}>
+                {c.adminRole}
+              </button>
+            ) : null}
           </div>
         ) : (
           <>

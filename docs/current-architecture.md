@@ -221,6 +221,7 @@ Stores candidate user id, title, raw resume text, created timestamp, and updated
 ### JobPost
 
 Stores recruiter user id, title, company, location, work mode, salary range, experience level, required skills, nice-to-have skills, description, status, spam score/reasons, quality score/tips, reports count, and timestamps.
+It also stores normalized metadata for future imports/search: source type, source provider, external id, canonical title/company/location, remote flag, parsed salary min/max/currency, and canonical skills.
 
 ### Analysis
 

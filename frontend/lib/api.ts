@@ -66,6 +66,17 @@ export type JobPost = {
   experience_level: string;
   required_skills: string;
   nice_to_have_skills: string;
+  source_type: string;
+  source_provider: string;
+  external_id: string;
+  canonical_title: string;
+  canonical_company: string;
+  canonical_location: string;
+  canonical_remote: number;
+  canonical_salary_min: number;
+  canonical_salary_max: number;
+  canonical_currency: string;
+  canonical_skills: string[];
   description: string;
   status: "draft" | "published";
   spam_score: number;

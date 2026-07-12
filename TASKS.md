@@ -240,6 +240,8 @@ Completed verification:
 
 ## Task 6: Define Normalized Job Data Model
 
+Status: completed in `Add normalized job metadata`.
+
 ### Goal
 
 Prepare internal and imported jobs to share a common representation.
@@ -273,6 +275,12 @@ ruff check app tests
 pytest
 DATABASE_URL=sqlite:////tmp/fairhire_normalized_jobs.db alembic -c alembic.ini upgrade head
 ```
+
+Completed verification:
+
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest && rm -f /tmp/fairhire_normalized_jobs.db && DATABASE_URL=sqlite:////tmp/fairhire_normalized_jobs.db .venv/bin/alembic -c alembic.ini upgrade head`
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit && npm run build:vercel`
+- Browser smoke test: default home shows Recruiter and Candidate only; admin access remains hidden unless opened with `?admin=1`.
 
 ## Task 7: Add External Job Connector Interface With Mock Provider
 

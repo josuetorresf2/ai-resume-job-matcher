@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 import uuid
 from datetime import datetime
@@ -94,6 +95,17 @@ def initialize_database() -> None:
                 "experience_level": "TEXT DEFAULT ''",
                 "required_skills": "TEXT DEFAULT ''",
                 "nice_to_have_skills": "TEXT DEFAULT ''",
+                "source_type": "TEXT DEFAULT 'internal'",
+                "source_provider": "TEXT DEFAULT 'fairhire'",
+                "external_id": "TEXT DEFAULT ''",
+                "canonical_title": "TEXT DEFAULT ''",
+                "canonical_company": "TEXT DEFAULT ''",
+                "canonical_location": "TEXT DEFAULT ''",
+                "canonical_remote": "INTEGER DEFAULT 1",
+                "canonical_salary_min": "INTEGER DEFAULT 0",
+                "canonical_salary_max": "INTEGER DEFAULT 0",
+                "canonical_currency": "TEXT DEFAULT 'USD'",
+                "canonical_skills": "TEXT DEFAULT '[]'",
                 "status": "TEXT DEFAULT 'draft'",
                 "spam_score": "INTEGER DEFAULT 0",
                 "spam_reasons": "TEXT DEFAULT '[]'",
@@ -269,6 +281,35 @@ def job_analysis_text(job_post: JobPost) -> str:
     )
 
 
+def normalize_skill_list(value: str) -> list[str]:
+    return sorted({item.strip().lower() for item in value.split(",") if item.strip()})
+
+
+def parse_salary_range(value: str) -> tuple[int, int, str]:
+    amounts = [int(part.replace(",", "")) for part in re.findall(r"\d[\d,]*", value or "")]
+    currency = "USD" if "$" in (value or "") else "USD"
+    if not amounts:
+        return 0, 0, currency
+    if len(amounts) == 1:
+        return amounts[0], amounts[0], currency
+    return min(amounts[0], amounts[1]), max(amounts[0], amounts[1]), currency
+
+
+def apply_normalized_job_fields(job: JobPost) -> None:
+    salary_min, salary_max, currency = parse_salary_range(job.salary_range)
+    job.source_type = job.source_type or "internal"
+    job.source_provider = job.source_provider or "fairhire"
+    job.external_id = job.external_id or ""
+    job.canonical_title = job.title.strip().lower()
+    job.canonical_company = job.company.strip().lower()
+    job.canonical_location = job.location.strip().lower()
+    job.canonical_remote = 1 if job.work_mode == "remote" else 0
+    job.canonical_salary_min = salary_min
+    job.canonical_salary_max = salary_max
+    job.canonical_currency = currency
+    job.canonical_skills = json.dumps(normalize_skill_list(", ".join([job.required_skills, job.nice_to_have_skills])))
+
+
 def company_profile_complete(profile: Recruiter) -> bool:
     return all(
         [
@@ -391,6 +432,17 @@ def serialize_job(job: JobPost) -> JobPostResponse:
         experience_level=job.experience_level,
         required_skills=job.required_skills,
         nice_to_have_skills=job.nice_to_have_skills,
+        source_type=job.source_type,
+        source_provider=job.source_provider,
+        external_id=job.external_id,
+        canonical_title=job.canonical_title,
+        canonical_company=job.canonical_company,
+        canonical_location=job.canonical_location,
+        canonical_remote=job.canonical_remote,
+        canonical_salary_min=job.canonical_salary_min,
+        canonical_salary_max=job.canonical_salary_max,
+        canonical_currency=job.canonical_currency,
+        canonical_skills=read_json_list(job.canonical_skills),
         description=job.description,
         status=job.status,
         spam_score=job.spam_score,
@@ -869,6 +921,7 @@ def create_job_post(
         nice_to_have_skills=payload.nice_to_have_skills,
         description=payload.description,
     )
+    apply_normalized_job_fields(row)
     assess_and_apply_job_scores(row, recruiter)
     db.add(row)
     update_recruiter_score(db, current_user)
@@ -924,6 +977,7 @@ def update_job_post(
         row.nice_to_have_skills = payload.nice_to_have_skills
     if payload.description is not None:
         row.description = payload.description
+    apply_normalized_job_fields(row)
     recruiter = db.query(Recruiter).filter(Recruiter.user_id == current_user.id).one()
     assess_and_apply_job_scores(row, recruiter)
     update_recruiter_score(db, current_user)
@@ -996,25 +1050,7 @@ def get_recruiter_dashboard(
         average_score = round(sum(analysis.match_score for analysis in analyses) / len(analyses)) if analyses else 0
         items.append(
             JobDashboardItem(
-                id=job.id,
-                recruiter_user_id=job.recruiter_user_id,
-                title=job.title,
-                company=job.company,
-                location=job.location,
-                work_mode=job.work_mode,
-                salary_range=job.salary_range,
-                experience_level=job.experience_level,
-                required_skills=job.required_skills,
-                nice_to_have_skills=job.nice_to_have_skills,
-                description=job.description,
-                status=job.status,
-                spam_score=job.spam_score,
-                spam_reasons=read_json_list(job.spam_reasons),
-                quality_score=job.quality_score,
-                quality_tips=read_json_list(job.quality_tips),
-                reports_count=job.reports_count,
-                created_at=job.created_at,
-                updated_at=job.updated_at,
+                **serialize_job(job).model_dump(),
                 candidates_matched=len(analyses),
                 average_match_score=average_score,
                 shortlisted_count=shortlisted_count,

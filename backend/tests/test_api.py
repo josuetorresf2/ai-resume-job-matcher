@@ -70,6 +70,20 @@ def create_job(
     return response.json()
 
 
+def assert_normalized_job_defaults(job: dict) -> None:
+    assert job["source_type"] == "internal"
+    assert job["source_provider"] == "fairhire"
+    assert job["external_id"] == ""
+    assert job["canonical_title"] == job["title"].lower()
+    assert job["canonical_company"] == job["company"].lower()
+    assert job["canonical_location"] == job["location"].lower()
+    assert job["canonical_remote"] == (1 if job["work_mode"] == "remote" else 0)
+    assert job["canonical_salary_min"] >= 0
+    assert job["canonical_salary_max"] >= job["canonical_salary_min"]
+    assert job["canonical_currency"] == "USD"
+    assert "python" in job["canonical_skills"]
+
+
 def test_health():
     response = client.get("/health")
     assert response.status_code == 200
@@ -256,6 +270,43 @@ def test_users_can_only_modify_their_own_data():
     assert resume_response.json()["detail"] == "Candidates can only edit their own resumes."
     assert job_response.status_code == 403
     assert job_response.json()["detail"] == "Recruiters can only edit their own job posts."
+
+
+def test_recruiter_created_job_has_normalized_defaults():
+    recruiter = login("recruiter-normalized@example.com", "recruiter", "Recruiter")
+    job = create_job(recruiter)
+
+    assert_normalized_job_defaults(job)
+
+
+def test_updating_job_refreshes_normalized_fields():
+    recruiter = login("recruiter-normalized-update@example.com", "recruiter", "Recruiter")
+    job = create_job(recruiter)
+
+    response = client.put(
+        f"/job-posts/{job['id']}",
+        headers=headers(recruiter),
+        json={
+            "title": "Senior React Engineer",
+            "company": "Bridge Labs",
+            "location": "Quito, Ecuador",
+            "work_mode": "remote",
+            "salary_range": "$1800-$3000",
+            "required_skills": "React, TypeScript, Testing",
+            "nice_to_have_skills": "Python, FastAPI",
+            "description": "Build accessible product interfaces and reliable API integrations for small companies.",
+        },
+    )
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data["canonical_title"] == "senior react engineer"
+    assert data["canonical_company"] == "bridge labs"
+    assert data["canonical_location"] == "quito, ecuador"
+    assert data["canonical_remote"] == 1
+    assert data["canonical_salary_min"] == 1800
+    assert data["canonical_salary_max"] == 3000
+    assert "typescript" in data["canonical_skills"]
 
 
 def test_matching_still_works_for_role_based_flow():

@@ -167,6 +167,17 @@ class JobPostResponse(BaseModel):
     experience_level: str
     required_skills: str
     nice_to_have_skills: str
+    source_type: str
+    source_provider: str
+    external_id: str
+    canonical_title: str
+    canonical_company: str
+    canonical_location: str
+    canonical_remote: int
+    canonical_salary_min: int
+    canonical_salary_max: int
+    canonical_currency: str
+    canonical_skills: list[str] = []
     description: str
     status: str
     spam_score: int
