@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "FairHire: Run backend",
+      "type": "shell",
+      "command": "source .venv/bin/activate && uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "FairHire: Run frontend",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "FairHire: Run full local dev",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "FairHire: Run backend",
+        "FairHire: Run frontend"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "FairHire: Backend tests",
+      "type": "shell",
+      "command": "source .venv/bin/activate && ruff check app tests && pytest",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FairHire: Frontend verify",
+      "type": "shell",
+      "command": "npm run lint && npm test && npx tsc --noEmit && npm run build:vercel",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
