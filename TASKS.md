@@ -101,6 +101,8 @@ Completed verification:
 
 ## Task 3: Complete Recruiter Job Form Fields
 
+Status: completed in `Complete recruiter job form fields`.
+
 ### Goal
 
 Make the recruiter UI fully use the existing backend job-post model.
@@ -136,6 +138,13 @@ npm run lint
 npm test
 npm run build:vercel
 ```
+
+Completed verification:
+
+- `cd frontend && npm run lint && npm test && npx tsc --noEmit`
+- `cd frontend && npm run build:vercel`
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest`
+- Browser smoke test: recruiter dashboard showed location, work mode, salary range, experience level, required skills, and nice-to-have skills; saving a job showed the saved notice plus quality/spam feedback.
 
 ## Task 4: Add Admin Review UI
 

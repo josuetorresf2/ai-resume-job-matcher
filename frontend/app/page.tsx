@@ -227,6 +227,15 @@ const COPY = {
     recruiterProfile: "Recruiter profile",
     recruiterProfileHelp: "Only this recruiter session can edit this profile.",
     company: "Company",
+    location: "Location",
+    workMode: "Work mode",
+    remote: "Remote",
+    hybrid: "Hybrid",
+    onsite: "Onsite",
+    salaryRange: "Salary range",
+    experienceLevel: "Experience level",
+    requiredSkills: "Required skills",
+    niceToHaveSkills: "Nice-to-have skills",
     website: "Website",
     contactEmail: "Contact email",
     country: "Country",
@@ -376,6 +385,15 @@ const COPY = {
     recruiterProfile: "Perfil del reclutador",
     recruiterProfileHelp: "Solo esta sesion de reclutador puede editar este perfil.",
     company: "Empresa",
+    location: "Ubicacion",
+    workMode: "Modalidad",
+    remote: "Remoto",
+    hybrid: "Hibrido",
+    onsite: "Presencial",
+    salaryRange: "Rango salarial",
+    experienceLevel: "Nivel de experiencia",
+    requiredSkills: "Habilidades requeridas",
+    niceToHaveSkills: "Habilidades deseadas",
     website: "Website",
     contactEmail: "Email de contacto",
     country: "Pais",
@@ -1217,6 +1235,12 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
   const [jobId, setJobId] = useState("");
   const [jobTitle, setJobTitle] = useState("Software Engineer");
   const [company, setCompany] = useState("Acme");
+  const [location, setLocation] = useState("");
+  const [workMode, setWorkMode] = useState<JobPost["work_mode"]>("remote");
+  const [salaryRange, setSalaryRange] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("");
+  const [requiredSkills, setRequiredSkills] = useState("Python, FastAPI, React, Docker, SQL");
+  const [niceToHaveSkills, setNiceToHaveSkills] = useState("AWS, GitHub Actions");
   const [description, setDescription] = useState(sampleJob);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1244,6 +1268,30 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load recruiter workspace.");
     }
+  }
+
+  function loadJobIntoForm(selected?: JobPost) {
+    if (!selected) {
+      setJobTitle("Software Engineer");
+      setCompany(profile.company || "Acme");
+      setLocation("");
+      setWorkMode("remote");
+      setSalaryRange("");
+      setExperienceLevel("");
+      setRequiredSkills("Python, FastAPI, React, Docker, SQL");
+      setNiceToHaveSkills("AWS, GitHub Actions");
+      setDescription(sampleJob);
+      return;
+    }
+    setJobTitle(selected.title);
+    setCompany(selected.company);
+    setLocation(selected.location);
+    setWorkMode(selected.work_mode);
+    setSalaryRange(selected.salary_range);
+    setExperienceLevel(selected.experience_level);
+    setRequiredSkills(selected.required_skills);
+    setNiceToHaveSkills(selected.nice_to_have_skills);
+    setDescription(selected.description);
   }
 
   async function onSaveProfile() {
@@ -1274,12 +1322,12 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
       const jobInput: JobPostInput = {
         title: jobTitle,
         company,
-        location: "",
-        work_mode: "remote",
-        salary_range: "",
-        experience_level: "",
-        required_skills: "",
-        nice_to_have_skills: "",
+        location,
+        work_mode: workMode,
+        salary_range: salaryRange,
+        experience_level: experienceLevel,
+        required_skills: requiredSkills,
+        nice_to_have_skills: niceToHaveSkills,
         description,
       };
       const saved = jobId ? await updateJobPost(user, Number(jobId), jobInput) : await createJobPost(user, jobInput);
@@ -1370,11 +1418,7 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
             <select value={jobId} onChange={(event) => {
               const selected = jobs.find((job) => job.id === Number(event.target.value));
               setJobId(event.target.value);
-              if (selected) {
-                setJobTitle(selected.title);
-                setCompany(selected.company);
-                setDescription(selected.description);
-              }
+              loadJobIntoForm(selected);
             }}>
               <option value="">{c.createJob}</option>
               {jobs.map((job) => <option key={job.id} value={job.id}>{job.title}</option>)}
@@ -1387,6 +1431,38 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
           <label className="field">
             <span>{c.company}</span>
             <input value={company} onChange={(event) => setCompany(event.target.value)} />
+          </label>
+          <div className="two-column-fields">
+            <label className="field">
+              <span>{c.location}</span>
+              <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Quito, Ecuador" />
+            </label>
+            <label className="field">
+              <span>{c.workMode}</span>
+              <select value={workMode} onChange={(event) => setWorkMode(event.target.value as JobPost["work_mode"])}>
+                <option value="remote">{c.remote}</option>
+                <option value="hybrid">{c.hybrid}</option>
+                <option value="onsite">{c.onsite}</option>
+              </select>
+            </label>
+          </div>
+          <div className="two-column-fields">
+            <label className="field">
+              <span>{c.salaryRange}</span>
+              <input value={salaryRange} onChange={(event) => setSalaryRange(event.target.value)} placeholder="$1200-$1800" />
+            </label>
+            <label className="field">
+              <span>{c.experienceLevel}</span>
+              <input value={experienceLevel} onChange={(event) => setExperienceLevel(event.target.value)} placeholder="Junior, Mid, Senior" />
+            </label>
+          </div>
+          <label className="field">
+            <span>{c.requiredSkills}</span>
+            <input value={requiredSkills} onChange={(event) => setRequiredSkills(event.target.value)} placeholder="Python, FastAPI, SQL" />
+          </label>
+          <label className="field">
+            <span>{c.niceToHaveSkills}</span>
+            <input value={niceToHaveSkills} onChange={(event) => setNiceToHaveSkills(event.target.value)} placeholder="AWS, CI/CD, Docker" />
           </label>
           <label className="field">
             <span>{c.companyDescription}</span>

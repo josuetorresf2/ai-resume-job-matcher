@@ -319,14 +319,13 @@ Verified from `frontend/app/page.tsx`:
 - Recruiter dashboard supports:
   - Company/recruiter profile fields.
   - Account verification placeholder button.
-  - Job post create/update/publish.
+  - Job post create/update/publish with title, company, location, work mode, salary range, experience level, required skills, nice-to-have skills, and description.
   - Job quality/spam/status display.
   - Recruiter metrics and match history.
 
 Verified limitations:
 
 - The frontend does not expose a separate admin dashboard even though backend admin endpoints exist.
-- Recruiter UI does not expose every job field in the backend model; it currently sends blank values for location, work mode, salary range, experience level, required skills, and nice-to-have skills.
 - Recruiter UI does not expose ranked candidates or recruiter match review controls, although backend endpoints exist.
 - Candidate GitHub analysis is simulated; it does not call the GitHub API.
 - Career/salary/interview tools are heuristic/simulated and not full conversational AI workflows.
@@ -475,7 +474,6 @@ Verified gaps:
 - Career coach is heuristic and does not persist plans.
 - Admin backend exists, but no admin UI was found.
 - Ranked candidates backend exists, but recruiter UI does not expose a ranked-candidate page.
-- Recruiter job form does not expose all backend job fields.
 - No external job-provider imports.
 - No idempotency for match creation, job imports, or external requests.
 - No request throttling or retry policies.
