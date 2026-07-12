@@ -132,6 +132,8 @@ const COPY = {
     recruiter: "Recruiter",
     candidatePerms: "Can edit their own profile and resumes, run matches, practice interviews, and view career intelligence.",
     recruiterPerms: "Can edit their own profile and job posts, view match results tied to their jobs, and cannot modify candidate resumes.",
+    candidateLanding: "Build your profile, upload a resume, and find roles that fit your skills.",
+    recruiterLanding: "Post jobs, review ranked matches, and shortlist candidates with confidence.",
     candidateCannot: "Cannot edit recruiter job posts, company profiles, or private recruiter notes.",
     recruiterCannot: "Cannot edit candidate resumes, profiles, contact details, or personal data.",
     marketPreviewTitle: "Explore jobs before signing up",
@@ -300,6 +302,8 @@ const COPY = {
     recruiter: "Reclutador",
     candidatePerms: "Puede editar su perfil y resumes, correr matches, practicar entrevistas y ver inteligencia de carrera.",
     recruiterPerms: "Puede editar su perfil y empleos, ver matches de sus empleos y no puede modificar resumes de candidatos.",
+    candidateLanding: "Crea tu perfil, sube tu resume y encuentra roles que calzan con tus habilidades.",
+    recruiterLanding: "Publica empleos, revisa matches rankeados y guarda candidatos con confianza.",
     candidateCannot: "No puede editar empleos, perfiles de empresa ni notas privadas del reclutador.",
     recruiterCannot: "No puede editar resumes, perfiles, datos de contacto ni informacion personal de candidatos.",
     marketPreviewTitle: "Explora empleos antes de registrarte",
@@ -722,11 +726,11 @@ function RoleSelection({
           <div className="role-picker role-picker-intro" aria-label={c.chooseWorkspace}>
             <button className="role-choice" disabled={loading} onClick={() => setSelectedRole("recruiter")}>
               <span>{c.recruiterRole}</span>
-              <small>{c.recruiterPerms}</small>
+              <small>{c.recruiterLanding}</small>
             </button>
             <button className="role-choice" disabled={loading} onClick={() => setSelectedRole("candidate")}>
               <span>{c.candidateRole}</span>
-              <small>{c.candidatePerms}</small>
+              <small>{c.candidateLanding}</small>
             </button>
             {adminMode ? (
               <button className="secondary-action compact-action" disabled={loading} onClick={() => setSelectedRole("admin")}>
