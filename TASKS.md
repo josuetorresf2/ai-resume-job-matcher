@@ -415,7 +415,7 @@ Completed verification:
 
 ## Task 10: Add Temporal Workflow for Job Imports
 
-Status: implemented in `Add Temporal job import workflow`; Docker smoke verification is blocked because Docker is not installed on this machine.
+Status: completed in `Add Temporal job import workflow`.
 
 ### Goal
 
@@ -453,10 +453,11 @@ pytest
 Completed verification:
 
 - `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest`
-
-Blocked verification:
-
-- `docker --version` fails with `zsh:1: command not found: docker`, so `docker compose up --build` could not be run locally yet.
+- `docker compose up --build`
+- `curl -s http://127.0.0.1:8000/health`
+- `curl -s -I http://127.0.0.1:3000`
+- `curl -s http://127.0.0.1:8080`
+- Started `/admin/job-import-workflows/mock` and confirmed imported mock jobs through `/job-posts`.
 
 ## Task 11: Add Puppeteer E2E QA Tests
 
@@ -500,7 +501,7 @@ Completed verification:
 
 ## Task 12: Fix Frontend Docker Image
 
-Status: implemented in `Fix frontend Docker build`; local Docker smoke verification is blocked because `docker` is not installed on this machine.
+Status: completed in `Fix frontend Docker build`.
 
 ### Goal
 
@@ -538,11 +539,9 @@ Completed verification:
 
 - `cd frontend && npm run lint && npm test && npx tsc --noEmit && npm run build`
 - `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest`
-
-Blocked verification:
-
-- `docker --version` failed with `zsh:1: command not found: docker`.
-- `docker compose up --build` could not be run until Docker Desktop/CLI is installed.
+- `docker compose up --build`
+- `curl http://localhost:8000/health`
+- `curl -I http://localhost:3000`
 
 ## Task 13: Add AWS-Ready Deployment Documentation
 

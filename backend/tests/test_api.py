@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import hashlib
+import asyncio
 import httpx
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_role_matcher.db"
@@ -534,8 +535,8 @@ def test_temporal_job_import_activity_is_idempotent(monkeypatch):
     admin = login("admin-temporal-activity@example.com", "admin", "Admin")
     payload = JobImportWorkflowInput(provider="mock", owner_user_id=admin["id"], publish=True)
 
-    first = activities.run_job_import_activity(payload)
-    second = activities.run_job_import_activity(payload)
+    first = asyncio.run(activities.run_job_import_activity(payload))
+    second = asyncio.run(activities.run_job_import_activity(payload))
 
     assert first.provider == "temporal_test_jobs"
     assert first.imported_count == 1

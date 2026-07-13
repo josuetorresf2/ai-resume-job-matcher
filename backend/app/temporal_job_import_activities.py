@@ -10,7 +10,7 @@ from .temporal_job_import_types import JobImportWorkflowInput, JobImportWorkflow
 
 
 @activity.defn
-def run_job_import_activity(payload: JobImportWorkflowInput) -> JobImportWorkflowResult:
+async def run_job_import_activity(payload: JobImportWorkflowInput) -> JobImportWorkflowResult:
     db = SessionLocal()
     try:
         if payload.provider == "mock":
