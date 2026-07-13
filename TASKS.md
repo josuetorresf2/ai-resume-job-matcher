@@ -450,6 +450,8 @@ pytest
 
 ## Task 11: Add Puppeteer E2E QA Tests
 
+Status: completed in `Add Puppeteer e2e coverage`.
+
 ### Goal
 
 Demonstrate browser automation for controlled QA.
@@ -481,6 +483,10 @@ One command validates core candidate and recruiter flows in a browser.
 cd frontend
 npm run e2e
 ```
+
+Completed verification:
+
+- `cd frontend && npm run e2e`
 
 ## Task 12: Fix Frontend Docker Image
 

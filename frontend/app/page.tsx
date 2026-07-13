@@ -724,11 +724,11 @@ function RoleSelection({
         </div>
         {!selectedRole ? (
           <div className="role-picker role-picker-intro" aria-label={c.chooseWorkspace}>
-            <button className="role-choice" disabled={loading} onClick={() => setSelectedRole("recruiter")}>
+            <button className="role-choice" data-testid="role-recruiter" disabled={loading} onClick={() => setSelectedRole("recruiter")}>
               <span>{c.recruiterRole}</span>
               <small>{c.recruiterLanding}</small>
             </button>
-            <button className="role-choice" disabled={loading} onClick={() => setSelectedRole("candidate")}>
+            <button className="role-choice" data-testid="role-candidate" disabled={loading} onClick={() => setSelectedRole("candidate")}>
               <span>{c.candidateRole}</span>
               <small>{c.candidateLanding}</small>
             </button>
@@ -751,19 +751,19 @@ function RoleSelection({
             </div>
             <label className="field">
               <span>{c.name}</span>
-              <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Alex Morgan" />
+              <input data-testid="auth-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Alex Morgan" />
             </label>
             <label className="field">
               <span>{c.email}</span>
-              <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="alex@example.com" />
+              <input data-testid="auth-email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="alex@example.com" />
             </label>
             <label className="field">
               <span>{c.phoneNumber}</span>
-              <input value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder={c.phoneHint} />
+              <input data-testid="auth-phone" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder={c.phoneHint} />
             </label>
             <label className="field">
               <span>{c.password}</span>
-              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={c.passwordHint} />
+              <input data-testid="auth-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={c.passwordHint} />
             </label>
             <div className="two-column-fields">
               <label className="field">
@@ -792,7 +792,7 @@ function RoleSelection({
               </div>
             ) : null}
             <div className="role-actions">
-              <button className="primary-action" disabled={!canLogin} onClick={() => selectedRole && onLogin(selectedRole)}>
+              <button className="primary-action" data-testid="auth-continue" disabled={!canLogin} onClick={() => selectedRole && onLogin(selectedRole)}>
                 {loading ? <span className="spinner" /> : null}
                 {c.continueAs} {selectedRoleLabel}
               </button>
@@ -1082,7 +1082,7 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
           </label>
           <label className="field">
             <span>{c.resumeTitle}</span>
-            <input value={resumeTitle} onChange={(event) => setResumeTitle(event.target.value)} />
+            <input data-testid="resume-title" value={resumeTitle} onChange={(event) => setResumeTitle(event.target.value)} />
           </label>
           <label className="file-button inline-upload">
             {c.uploadResume}
@@ -1090,9 +1090,9 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
           </label>
           <label className="field">
             <span>{c.resumeText}</span>
-            <textarea value={resumeText} onChange={(event) => setResumeText(event.target.value)} />
+            <textarea data-testid="resume-text" value={resumeText} onChange={(event) => setResumeText(event.target.value)} />
           </label>
-          <button className="primary-action" disabled={loading || resumeText.trim().length < 20} onClick={onSaveResume}>
+          <button className="primary-action" data-testid="save-resume" disabled={loading || resumeText.trim().length < 20} onClick={onSaveResume}>
             {loading ? <span className="spinner" /> : null}
             {c.saveResume}
           </button>
@@ -1133,7 +1133,7 @@ function CandidateDashboard({ user, c }: { user: User; c: Copy }) {
       <section className="panel history-wide">
         <PanelTitle title={c.aiTools} subtitle={c.aiToolsHelp} />
         <div className="tool-grid">
-          <button className="secondary-action" disabled={loading} onClick={() => runCandidateTool("interview")}>
+          <button className="secondary-action" data-testid="practice-interview" disabled={loading} onClick={() => runCandidateTool("interview")}>
             {activeTool === "interview" ? <span className="spinner" /> : null}
             {c.practiceInterview}
           </button>
@@ -1577,16 +1577,16 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
           </label>
           <label className="field">
             <span>{c.headline}</span>
-            <input value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} />
+            <input data-testid="job-title" value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} />
           </label>
           <label className="field">
             <span>{c.company}</span>
-            <input value={company} onChange={(event) => setCompany(event.target.value)} />
+            <input data-testid="job-company" value={company} onChange={(event) => setCompany(event.target.value)} />
           </label>
           <div className="two-column-fields">
             <label className="field">
               <span>{c.location}</span>
-              <input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Quito, Ecuador" />
+              <input data-testid="job-location" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Quito, Ecuador" />
             </label>
             <label className="field">
               <span>{c.workMode}</span>
@@ -1600,26 +1600,26 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
           <div className="two-column-fields">
             <label className="field">
               <span>{c.salaryRange}</span>
-              <input value={salaryRange} onChange={(event) => setSalaryRange(event.target.value)} placeholder="$1200-$1800" />
+              <input data-testid="job-salary" value={salaryRange} onChange={(event) => setSalaryRange(event.target.value)} placeholder="$1200-$1800" />
             </label>
             <label className="field">
               <span>{c.experienceLevel}</span>
-              <input value={experienceLevel} onChange={(event) => setExperienceLevel(event.target.value)} placeholder="Junior, Mid, Senior" />
+              <input data-testid="job-experience" value={experienceLevel} onChange={(event) => setExperienceLevel(event.target.value)} placeholder="Junior, Mid, Senior" />
             </label>
           </div>
           <label className="field">
             <span>{c.requiredSkills}</span>
-            <input value={requiredSkills} onChange={(event) => setRequiredSkills(event.target.value)} placeholder="Python, FastAPI, SQL" />
+            <input data-testid="job-required-skills" value={requiredSkills} onChange={(event) => setRequiredSkills(event.target.value)} placeholder="Python, FastAPI, SQL" />
           </label>
           <label className="field">
             <span>{c.niceToHaveSkills}</span>
-            <input value={niceToHaveSkills} onChange={(event) => setNiceToHaveSkills(event.target.value)} placeholder="AWS, CI/CD, Docker" />
+            <input data-testid="job-nice-skills" value={niceToHaveSkills} onChange={(event) => setNiceToHaveSkills(event.target.value)} placeholder="AWS, CI/CD, Docker" />
           </label>
           <label className="field">
             <span>{c.companyDescription}</span>
-            <textarea value={description} onChange={(event) => setDescription(event.target.value)} />
+            <textarea data-testid="job-description" value={description} onChange={(event) => setDescription(event.target.value)} />
           </label>
-          <button className="primary-action" disabled={loading || description.trim().length < 20} onClick={onSaveJob}>
+          <button className="primary-action" data-testid="save-job" disabled={loading || description.trim().length < 20} onClick={onSaveJob}>
             {loading ? <span className="spinner" /> : null}
             {c.saveJob}
           </button>
