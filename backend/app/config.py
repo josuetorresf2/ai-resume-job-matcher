@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     twilio_auth_token: Optional[str] = None
     twilio_sms_from: Optional[str] = None
     twilio_whatsapp_from: Optional[str] = None
+    whatsapp_cloud_access_token: Optional[str] = None
+    whatsapp_cloud_phone_number_id: Optional[str] = None
+    whatsapp_cloud_api_version: str = "v24.0"
     temporal_address: str = "localhost:7233"
     temporal_namespace: str = "default"
     temporal_task_queue: str = "fairhire-job-imports"

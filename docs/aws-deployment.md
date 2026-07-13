@@ -66,6 +66,9 @@ Required production secrets:
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_SMS_FROM`
 - `TWILIO_WHATSAPP_FROM`
+- `WHATSAPP_CLOUD_ACCESS_TOKEN`
+- `WHATSAPP_CLOUD_PHONE_NUMBER_ID`
+- `WHATSAPP_CLOUD_API_VERSION`
 
 Never commit real values. Store them in AWS Secrets Manager and GitHub Actions environment secrets.
 

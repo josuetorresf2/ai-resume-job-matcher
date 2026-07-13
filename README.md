@@ -158,6 +158,9 @@ TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_SMS_FROM=
 TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+WHATSAPP_CLOUD_ACCESS_TOKEN=
+WHATSAPP_CLOUD_PHONE_NUMBER_ID=
+WHATSAPP_CLOUD_API_VERSION=v24.0
 TEMPORAL_ADDRESS=localhost:7233
 TEMPORAL_NAMESPACE=default
 TEMPORAL_TASK_QUEUE=fairhire-job-imports
@@ -233,6 +236,9 @@ This repo includes `render.yaml`.
    - `TWILIO_AUTH_TOKEN`
    - `TWILIO_SMS_FROM`
    - `TWILIO_WHATSAPP_FROM`
+   - `WHATSAPP_CLOUD_ACCESS_TOKEN`
+   - `WHATSAPP_CLOUD_PHONE_NUMBER_ID`
+   - `WHATSAPP_CLOUD_API_VERSION=v24.0`
    - `CORS_ORIGINS=https://your-vercel-app.vercel.app`
 5. Deploy.
 6. Copy the Render backend URL.
@@ -261,7 +267,7 @@ Candidate workflow:
 
 1. Create a candidate account.
 2. Add a real E.164 phone number, for example `+593987654321`, if using SMS or WhatsApp verification.
-3. Request a verification code. Local/demo mode shows code `123456`; Twilio env vars enable real SMS or WhatsApp delivery.
+3. Request a verification code. Local/demo mode shows code `123456`; WhatsApp Cloud API env vars enable real WhatsApp delivery, and Twilio env vars remain supported as a fallback for SMS or WhatsApp.
 4. Upload or paste a resume.
 5. Match against published jobs.
 6. Practice an AI interview.
@@ -299,6 +305,18 @@ POST /admin/job-imports/remotive
 
 Remotive imports use the documented public Remotive remote jobs API and store provider metadata plus source URLs for attribution.
 
+### Real WhatsApp Verification
+
+FairHire sends real WhatsApp verification codes through Meta WhatsApp Cloud API when these backend environment variables are set:
+
+```bash
+WHATSAPP_CLOUD_ACCESS_TOKEN=your_meta_access_token
+WHATSAPP_CLOUD_PHONE_NUMBER_ID=your_whatsapp_phone_number_id
+WHATSAPP_CLOUD_API_VERSION=v24.0
+```
+
+The WhatsApp business phone number must be configured in Meta's WhatsApp Business Platform, and users must provide a valid E.164 phone number. If these variables are missing, FairHire falls back to Twilio WhatsApp when Twilio variables are configured; otherwise it stays in local demo mode and returns code `123456`.
+
 ## CI/CD
 
 GitHub Actions runs on every push and pull request:
@@ -315,7 +333,7 @@ GitHub Actions runs on every push and pull request:
 ## Roadmap
 
 - Real authentication with Google, GitHub, and email login
-- Production email, SMS, or WhatsApp verification provider
+- Production email verification provider and persisted verification-code storage
 - Admin review UI
 - Fraud detection for fake companies, fake candidates, AI-generated nonsense resumes, and copy-paste job descriptions
 - Recruiter Copilot for job descriptions, responsibilities, salary recommendations, and interview questions

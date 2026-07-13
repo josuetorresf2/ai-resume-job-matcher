@@ -579,7 +579,10 @@ def request_verification(
     message = (
         f"Verification sent by {payload.channel}."
         if status == "sent"
-        else f"Demo verification prepared for {payload.channel}. Use code 123456. Configure Twilio env vars to send real messages."
+        else (
+            f"Demo verification prepared for {payload.channel}. Use code 123456. "
+            "Configure WhatsApp Cloud API or Twilio env vars to send real messages."
+        )
     )
     return VerificationResponse(status=status, message=message, demo_code=None if status == "sent" else "123456")
 

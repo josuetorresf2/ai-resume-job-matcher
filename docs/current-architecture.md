@@ -370,7 +370,7 @@ Verified:
 
 - OpenAI is used only by `ai_analysis()` when `OPENAI_API_KEY` is configured.
 - When no OpenAI key is present or parsing fails, heuristic analysis is used.
-- Twilio SMS/WhatsApp can send through HTTPX only if Twilio env vars are configured.
+- WhatsApp can send through Meta WhatsApp Cloud API when Meta env vars are configured. Twilio SMS/WhatsApp can still send through HTTPX only if Twilio env vars are configured.
 - Email verification is placeholder-only.
 
 Not found:
@@ -436,6 +436,9 @@ Verified from code and deployment files:
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_SMS_FROM`
 - `TWILIO_WHATSAPP_FROM`
+- `WHATSAPP_CLOUD_ACCESS_TOKEN`
+- `WHATSAPP_CLOUD_PHONE_NUMBER_ID`
+- `WHATSAPP_CLOUD_API_VERSION`
 - `NEXT_PUBLIC_API_URL`
 
 The local `.env` file exists but was not copied into this document. Only variable names were inspected.
@@ -474,7 +477,7 @@ Verified gaps:
 - No Puppeteer QA tests.
 - No OAuth login.
 - Email verification is a placeholder.
-- SMS/WhatsApp verification requires Twilio env vars and uses a hard-coded `"123456"` code path; there is no persisted verification-code validation flow.
+- WhatsApp verification can send through Meta WhatsApp Cloud API when `WHATSAPP_CLOUD_ACCESS_TOKEN` and `WHATSAPP_CLOUD_PHONE_NUMBER_ID` are configured, with Twilio as a fallback. Without provider credentials, the local demo still uses hard-coded code `"123456"`; there is no persisted verification-code validation flow.
 - GitHub analysis is simulated and only validates that the URL contains `github.com`.
 - Salary intelligence uses static ranges.
 - AI interview simulator is deterministic heuristic logic, not a chat/interview state machine.

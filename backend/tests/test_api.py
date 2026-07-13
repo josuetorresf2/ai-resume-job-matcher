@@ -10,11 +10,13 @@ os.environ.pop("OPENAI_API_KEY", None)
 Path("test_role_matcher.db").unlink(missing_ok=True)
 
 from fastapi.testclient import TestClient  # noqa: E402
+from app.config import Settings  # noqa: E402
 from app.main import app  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
 from app.job_connectors import ConnectorHttpClient, MockJobConnector, NormalizedJobInput, RemotiveJobConnector, RetryPolicy  # noqa: E402
 from app.models import User  # noqa: E402
 from app.temporal_job_import_types import JobImportWorkflowInput  # noqa: E402
+from app import verification  # noqa: E402
 
 
 client = TestClient(app)
@@ -164,6 +166,37 @@ def test_whatsapp_demo_code_verifies_account():
     assert denied.json()["detail"] == "Invalid verification code."
     assert verified.status_code == 200
     assert verified.json()["verification_status"] == "verified"
+
+
+def test_whatsapp_cloud_api_sends_verification_code(monkeypatch):
+    calls = []
+
+    def fake_post(url: str, **kwargs):
+        calls.append({"url": url, **kwargs})
+        return httpx.Response(200, request=httpx.Request("POST", url), json={"messages": [{"id": "wamid.test"}]})
+
+    monkeypatch.setattr(verification.httpx, "post", fake_post)
+    settings = Settings(
+        whatsapp_cloud_access_token="meta-token",
+        whatsapp_cloud_phone_number_id="1234567890",
+        whatsapp_cloud_api_version="v24.0",
+    )
+
+    status = verification.send_verification_message(settings, "whatsapp", "+593987654321", "654321")
+
+    assert status == "sent"
+    assert len(calls) == 1
+    assert calls[0]["url"] == "https://graph.facebook.com/v24.0/1234567890/messages"
+    assert calls[0]["headers"]["Authorization"] == "Bearer meta-token"
+    assert calls[0]["json"] == {
+        "messaging_product": "whatsapp",
+        "to": "593987654321",
+        "type": "text",
+        "text": {
+            "preview_url": False,
+            "body": "Your FairHire verification code is 654321.",
+        },
+    }
 
 
 def test_x_user_id_header_is_rejected_when_test_header_mode_is_disabled():
