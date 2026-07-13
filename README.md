@@ -158,6 +158,9 @@ TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_SMS_FROM=
 TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+TEMPORAL_ADDRESS=localhost:7233
+TEMPORAL_NAMESPACE=default
+TEMPORAL_TASK_QUEUE=fairhire-job-imports
 ```
 
 The backend still works without an OpenAI key by using local heuristic analysis.
@@ -176,6 +179,9 @@ Open:
 
 - Frontend: http://localhost:3000
 - Backend API docs: http://localhost:8000/docs
+- Temporal UI: http://localhost:8080
+
+Docker Compose also starts a Temporal worker for durable admin job imports. Admins can use `/admin/job-import-workflows/{provider}` with `provider` set to `mock` or `remotive` to start a workflow-backed import.
 
 ### Option 2: Manual Backend and Frontend
 

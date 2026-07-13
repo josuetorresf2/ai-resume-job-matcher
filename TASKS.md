@@ -415,6 +415,8 @@ Completed verification:
 
 ## Task 10: Add Temporal Workflow for Job Imports
 
+Status: implemented in `Add Temporal job import workflow`; Docker smoke verification is blocked because Docker is not installed on this machine.
+
 ### Goal
 
 Move long-running imports to a durable workflow.
@@ -447,6 +449,14 @@ docker compose up --build
 cd backend
 pytest
 ```
+
+Completed verification:
+
+- `cd backend && .venv/bin/ruff check app tests && .venv/bin/pytest`
+
+Blocked verification:
+
+- `docker --version` fails with `zsh:1: command not found: docker`, so `docker compose up --build` could not be run locally yet.
 
 ## Task 11: Add Puppeteer E2E QA Tests
 

@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     twilio_auth_token: Optional[str] = None
     twilio_sms_from: Optional[str] = None
     twilio_whatsapp_from: Optional[str] = None
+    temporal_address: str = "localhost:7233"
+    temporal_namespace: str = "default"
+    temporal_task_queue: str = "fairhire-job-imports"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

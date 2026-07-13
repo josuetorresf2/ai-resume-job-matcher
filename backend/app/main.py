@@ -52,6 +52,7 @@ from .schemas import (
     JobDashboardItem,
     JobImportRequest,
     JobImportResponse,
+    JobImportWorkflowResponse,
     LoginRequest,
     MatchCreate,
     MatchReviewUpdate,
@@ -74,6 +75,7 @@ from .schemas import (
     VerificationRequest,
     VerificationResponse,
 )
+from .temporal_client import start_job_import_workflow
 from .trust import assess_job_quality, assess_job_safety, candidate_completeness_score, recruiter_trust_score
 from .analysis import extract_skills
 from .verification import send_verification_message
@@ -1203,6 +1205,35 @@ def import_remotive_jobs(
         imported_count=len(imported),
         skipped_count=skipped,
         jobs=[serialize_job(job) for job in imported],
+    )
+
+
+@app.post("/admin/job-import-workflows/{provider}", response_model=JobImportWorkflowResponse)
+async def start_admin_job_import_workflow(
+    provider: str,
+    payload: JobImportRequest,
+    current_user: User = Depends(get_current_user),
+) -> JobImportWorkflowResponse:
+    require_admin(current_user)
+    if provider not in {"mock", "remotive"}:
+        raise HTTPException(status_code=400, detail="Unsupported job import provider.")
+    try:
+        workflow_id, run_id = await start_job_import_workflow(
+            settings,
+            provider=provider,
+            owner_user_id=current_user.id,
+            publish=payload.publish,
+            query=payload.query,
+            limit=payload.limit,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Temporal workflow could not be started: {exc}") from exc
+    return JobImportWorkflowResponse(
+        provider=provider,
+        workflow_id=workflow_id,
+        run_id=run_id,
+        task_queue=settings.temporal_task_queue,
+        status="started",
     )
 
 

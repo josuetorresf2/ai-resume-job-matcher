@@ -13,6 +13,7 @@ from app.main import app  # noqa: E402
 from app.database import SessionLocal  # noqa: E402
 from app.job_connectors import ConnectorHttpClient, MockJobConnector, NormalizedJobInput, RemotiveJobConnector, RetryPolicy  # noqa: E402
 from app.models import User  # noqa: E402
+from app.temporal_job_import_types import JobImportWorkflowInput  # noqa: E402
 
 
 client = TestClient(app)
@@ -503,6 +504,80 @@ def test_admin_can_import_remotive_jobs_with_mocked_connector(monkeypatch):
     assert data["jobs"][0]["source_provider"] == "remotive"
     assert data["jobs"][0]["external_url"].startswith("https://remotive.com/")
     assert data["jobs"][0]["canonical_salary_min"] == 2200
+
+
+def test_temporal_job_import_activity_is_idempotent(monkeypatch):
+    from app import temporal_job_import_activities as activities  # noqa: PLC0415
+
+    class FakeTemporalConnector:
+        provider = "temporal_test_jobs"
+
+        def fetch_jobs(self) -> list[NormalizedJobInput]:
+            return [
+                NormalizedJobInput(
+                    title="Temporal Automation Engineer",
+                    company="Workflow Co",
+                    location="Remote",
+                    work_mode="remote",
+                    salary_range="$2500-$3500",
+                    experience_level="Mid-level",
+                    required_skills="Temporal, Python, APIs",
+                    nice_to_have_skills="Docker",
+                    description="Build durable workflow automation with Temporal, retries, and operational tests.",
+                    source_provider=self.provider,
+                    external_id="temporal-test-job-001",
+                    external_url="https://example.com/temporal-test-job-001",
+                )
+            ]
+
+    monkeypatch.setattr(activities, "MockJobConnector", FakeTemporalConnector)
+    admin = login("admin-temporal-activity@example.com", "admin", "Admin")
+    payload = JobImportWorkflowInput(provider="mock", owner_user_id=admin["id"], publish=True)
+
+    first = activities.run_job_import_activity(payload)
+    second = activities.run_job_import_activity(payload)
+
+    assert first.provider == "temporal_test_jobs"
+    assert first.imported_count == 1
+    assert first.skipped_count == 0
+    assert second.imported_count == 0
+    assert second.skipped_count == 1
+
+
+def test_admin_can_start_temporal_job_import_workflow(monkeypatch):
+    from app import main  # noqa: PLC0415
+
+    async def fake_start_job_import_workflow(settings, provider, owner_user_id, publish, query, limit):
+        assert settings.temporal_task_queue == "fairhire-job-imports"
+        assert provider == "mock"
+        assert publish is True
+        assert query == "python"
+        assert limit == 5
+        assert owner_user_id > 0
+        return "fairhire-job-import-mock-test", "run-test"
+
+    monkeypatch.setattr(main, "start_job_import_workflow", fake_start_job_import_workflow)
+    admin = login("admin-temporal-workflow@example.com", "admin", "Admin")
+
+    response = client.post("/admin/job-import-workflows/mock", headers=headers(admin), json={"publish": True})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "provider": "mock",
+        "workflow_id": "fairhire-job-import-mock-test",
+        "run_id": "run-test",
+        "task_queue": "fairhire-job-imports",
+        "status": "started",
+    }
+
+
+def test_non_admin_cannot_start_temporal_job_import_workflow():
+    recruiter = login("recruiter-temporal-denied@example.com", "recruiter", "Recruiter")
+
+    response = client.post("/admin/job-import-workflows/mock", headers=headers(recruiter), json={"publish": True})
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Only admins can perform this action."
 
 
 def test_updating_job_refreshes_normalized_fields():

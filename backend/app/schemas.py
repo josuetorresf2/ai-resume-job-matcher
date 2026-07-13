@@ -222,6 +222,14 @@ class JobImportResponse(BaseModel):
     jobs: list[JobPostResponse]
 
 
+class JobImportWorkflowResponse(BaseModel):
+    provider: str
+    workflow_id: str
+    run_id: str
+    task_queue: str
+    status: str
+
+
 class MatchCreate(BaseModel):
     resume_id: int
     job_post_id: int
