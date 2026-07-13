@@ -192,10 +192,15 @@ function sessionHeaders(user?: User | null): HeadersInit {
     "X-Correlation-ID": createCorrelationId(),
   };
   if (!user) return baseHeaders;
+  if (user.access_token) {
+    return {
+      ...baseHeaders,
+      Authorization: `Bearer ${user.access_token}`,
+    };
+  }
   return {
     ...baseHeaders,
     "X-User-Id": String(user.id),
-    ...(user.access_token ? { Authorization: `Bearer ${user.access_token}` } : {}),
   };
 }
 
