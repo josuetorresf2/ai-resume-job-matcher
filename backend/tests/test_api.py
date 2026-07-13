@@ -119,6 +119,51 @@ def test_login_returns_bearer_token_for_authenticated_requests():
     assert response.json()["email"] == "candidate-token@example.com"
 
 
+def test_sms_or_whatsapp_verification_requires_real_phone_number():
+    response = client.post(
+        "/auth/mock-login",
+        json={
+            "name": "SMS User",
+            "email": "sms-invalid-phone@example.com",
+            "phone_number": "12345",
+            "password": "StrongPass123",
+            "role": "candidate",
+            "verification_channel": "sms",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "E.164" in response.json()["detail"]
+
+
+def test_whatsapp_demo_code_verifies_account():
+    login_response = client.post(
+        "/auth/mock-login",
+        json={
+            "name": "WhatsApp User",
+            "email": "whatsapp-verify@example.com",
+            "phone_number": "+593987654321",
+            "password": "StrongPass123",
+            "role": "candidate",
+            "verification_channel": "whatsapp",
+        },
+    )
+    user = login_response.json()
+
+    request = client.post("/auth/request-verification", headers=headers(user), json={"channel": "whatsapp"})
+    denied = client.post("/auth/verify-code", headers=headers(user), json={"code": "000000"})
+    verified = client.post("/auth/verify-code", headers=headers(user), json={"code": "123456"})
+
+    assert login_response.status_code == 200
+    assert request.status_code == 200
+    assert request.json()["status"] == "placeholder"
+    assert request.json()["demo_code"] == "123456"
+    assert denied.status_code == 400
+    assert denied.json()["detail"] == "Invalid verification code."
+    assert verified.status_code == 200
+    assert verified.json()["verification_status"] == "verified"
+
+
 def test_x_user_id_header_is_rejected_when_test_header_mode_is_disabled():
     user = login("candidate-test-header-disabled@example.com", "candidate", "Candidate")
 

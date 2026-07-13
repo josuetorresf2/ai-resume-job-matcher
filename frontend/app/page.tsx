@@ -40,6 +40,7 @@ import {
   mockLogin,
   publishJobPost,
   reportJobPost,
+  requestVerification,
   removeAdminJob,
   reviewAdminCompany,
   saveCandidateProfile,
@@ -48,7 +49,7 @@ import {
   updateJobPost,
   updatePreferences,
   updateResume,
-  verifyAccount,
+  verifyCode,
   practiceInterview,
   SalaryIntelligence,
 } from "../lib/api";
@@ -257,7 +258,14 @@ const COPY = {
     country: "Country",
     city: "City",
     companyDescription: "Company description",
-    verifyAccount: "Verify account placeholder",
+    verifyAccount: "Verify account",
+    accountVerification: "Account verification",
+    verificationHelp: "Verify your account before publishing jobs or sharing trusted profile signals.",
+    requestCode: "Request code",
+    verificationCode: "Verification code",
+    verifyCode: "Verify code",
+    demoCode: "Demo code",
+    verifiedAccount: "Account verified",
     saveJob: "Save job post",
     publishJob: "Publish job",
     candidateResults: "Candidate match results",
@@ -427,7 +435,14 @@ const COPY = {
     country: "Pais",
     city: "Ciudad",
     companyDescription: "Descripcion de empresa",
-    verifyAccount: "Verificar cuenta placeholder",
+    verifyAccount: "Verificar cuenta",
+    accountVerification: "Verificacion de cuenta",
+    verificationHelp: "Verifica tu cuenta antes de publicar empleos o compartir senales de confianza.",
+    requestCode: "Pedir codigo",
+    verificationCode: "Codigo de verificacion",
+    verifyCode: "Verificar codigo",
+    demoCode: "Codigo demo",
+    verifiedAccount: "Cuenta verificada",
     saveJob: "Guardar empleo",
     publishJob: "Publicar empleo",
     candidateResults: "Resultados de candidatos",
@@ -618,6 +633,10 @@ export default function Home() {
         </div>
       </header>
 
+      {user && user.verification_status !== "verified" ? (
+        <AccountVerificationPanel user={user} setUser={setUser} c={c} />
+      ) : null}
+
       {!user || !role ? (
         <RoleSelection
           name={name}
@@ -652,6 +671,68 @@ export default function Home() {
         <AdminDashboard user={user} c={c} />
       )}
     </main>
+  );
+}
+
+function AccountVerificationPanel({ user, setUser, c }: { user: User; setUser: (user: User) => void; c: Copy }) {
+  const [code, setCode] = useState("");
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function onRequestCode() {
+    setLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await requestVerification(user, user.verification_channel);
+      setNotice(result.demo_code ? `${result.message} ${c.demoCode}: ${result.demo_code}` : result.message);
+      if (result.demo_code) setCode(result.demo_code);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not request verification code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onVerifyCode() {
+    setLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      const verified = await verifyCode(user, code);
+      setUser(verified);
+      setNotice(c.verifiedAccount);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not verify code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="panel verification-panel">
+      <PanelTitle title={c.accountVerification} subtitle={c.verificationHelp} />
+      <div className="trust-strip">
+        <span>{c.status}: {user.verification_status}</span>
+        <span>{c.verifyBy}: {user.verification_channel}</span>
+        <span>{user.verification_channel === "email" ? user.email : user.phone_number}</span>
+      </div>
+      <div className="verification-actions">
+        <button className="secondary-action" data-testid="request-verification-code" disabled={loading} onClick={onRequestCode}>
+          {loading ? <span className="spinner" /> : null}
+          {c.requestCode}
+        </button>
+        <label className="field">
+          <span>{c.verificationCode}</span>
+          <input data-testid="verification-code" value={code} onChange={(event) => setCode(event.target.value)} placeholder="123456" />
+        </label>
+        <button className="primary-action" data-testid="verify-code" disabled={loading || code.trim().length < 4} onClick={onVerifyCode}>
+          {c.verifyCode}
+        </button>
+      </div>
+      <StatusMessages error={error} notice={notice} c={c} />
+    </section>
   );
 }
 
@@ -778,7 +859,7 @@ function RoleSelection({
               </label>
               <label className="field">
                 <span>{c.verifyBy}</span>
-                <select value={verificationChannel} onChange={(event) => setVerificationChannel(event.target.value as "email" | "sms" | "whatsapp")}>
+                <select data-testid="auth-verification-channel" value={verificationChannel} onChange={(event) => setVerificationChannel(event.target.value as "email" | "sms" | "whatsapp")}>
                   <option value="email">Email</option>
                   <option value="sms">SMS</option>
                   <option value="whatsapp">WhatsApp</option>
@@ -1402,6 +1483,10 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
 
+  useEffect(() => {
+    setAccount(user);
+  }, [user]);
+
   async function refreshRecruiter() {
     setError("");
     try {
@@ -1451,18 +1536,6 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
     const saved = await saveRecruiterProfile(user, profile);
     setProfile(saved);
     setNotice("Recruiter profile saved.");
-  }
-
-  async function onVerifyAccount() {
-    setError("");
-    setNotice("");
-    try {
-      const verified = await verifyAccount(account);
-      setAccount(verified);
-      setNotice("Account marked verified. Company review is still required before publishing.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not verify account.");
-    }
   }
 
   async function onSaveJob() {
@@ -1558,7 +1631,6 @@ function RecruiterDashboard({ user, c }: { user: User; c: Copy }) {
             <span>{c.company}: {profile.company_status}</span>
             <span>{c.trust}: {profile.trust_score}/100</span>
           </div>
-          <button className="secondary-action" onClick={onVerifyAccount}>{c.verifyAccount}</button>
           <button className="secondary-action" onClick={onSaveProfile}>{c.saveProfile}</button>
         </div>
 

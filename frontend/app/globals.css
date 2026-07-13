@@ -539,6 +539,22 @@ h3 {
   padding: 6px 9px;
 }
 
+.verification-panel {
+  margin: 0 auto 18px;
+  max-width: 1160px;
+}
+
+.verification-actions {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(160px, 0.8fr) minmax(220px, 1fr) minmax(160px, 0.8fr);
+}
+
+.verification-actions .field {
+  margin-bottom: 0;
+}
+
 .tool-grid,
 .insight-grid {
   display: grid;
@@ -1286,6 +1302,7 @@ textarea:focus {
   .role-workspace,
   .role-grid,
   .role-panel,
+  .verification-actions,
   .tool-grid,
   .insight-grid,
   .two-column-fields {

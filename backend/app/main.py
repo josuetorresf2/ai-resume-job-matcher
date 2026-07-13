@@ -70,6 +70,7 @@ from .schemas import (
     TalentPoolCandidate,
     TalentPoolResponse,
     UserResponse,
+    VerificationConfirmRequest,
     VerificationRequest,
     VerificationResponse,
 )
@@ -576,9 +577,27 @@ def request_verification(
     message = (
         f"Verification sent by {payload.channel}."
         if status == "sent"
-        else f"Verification placeholder prepared for {payload.channel}. Configure Twilio env vars to send real messages."
+        else f"Demo verification prepared for {payload.channel}. Use code 123456. Configure Twilio env vars to send real messages."
     )
-    return VerificationResponse(status=status, message=message)
+    return VerificationResponse(status=status, message=message, demo_code=None if status == "sent" else "123456")
+
+
+@app.post("/auth/verify-code", response_model=UserResponse)
+def verify_code(
+    payload: VerificationConfirmRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    if payload.code.strip() != "123456":
+        raise HTTPException(status_code=400, detail="Invalid verification code.")
+    current_user.verification_status = "verified"
+    if current_user.role == "recruiter":
+        update_recruiter_score(db, current_user)
+    db.commit()
+    db.refresh(current_user)
+    response = UserResponse.model_validate(current_user)
+    response.access_token = create_access_token(current_user.id, settings.auth_secret_key)
+    return response
 
 
 @app.post("/auth/verify-placeholder", response_model=UserResponse)

@@ -255,12 +255,13 @@ Candidate workflow:
 
 1. Create a candidate account.
 2. Add a real E.164 phone number, for example `+593987654321`, if using SMS or WhatsApp verification.
-3. Upload or paste a resume.
-4. Match against published jobs.
-5. Practice an AI interview.
-6. Generate a career roadmap to reach a target match score.
-7. Estimate salary ranges.
-8. Analyze GitHub portfolio strength.
+3. Request a verification code. Local/demo mode shows code `123456`; Twilio env vars enable real SMS or WhatsApp delivery.
+4. Upload or paste a resume.
+5. Match against published jobs.
+6. Practice an AI interview.
+7. Generate a career roadmap to reach a target match score.
+8. Estimate salary ranges.
+9. Analyze GitHub portfolio strength.
 
 Recruiter workflow:
 

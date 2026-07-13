@@ -14,6 +14,12 @@ export type User = {
   access_token?: string | null;
 };
 
+export type VerificationResult = {
+  status: string;
+  message: string;
+  demo_code?: string | null;
+};
+
 export type CandidateProfile = {
   id: number;
   user_id: number;
@@ -247,6 +253,24 @@ export async function verifyAccount(user: User): Promise<User> {
     headers: sessionHeaders(user),
   });
   return parseResponse<User>(response, "Could not verify account.");
+}
+
+export async function requestVerification(user: User, channel: "email" | "sms" | "whatsapp"): Promise<VerificationResult> {
+  const response = await fetch(`${API_URL}/auth/request-verification`, {
+    method: "POST",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ channel }),
+  });
+  return parseResponse<VerificationResult>(response, "Could not request verification code.");
+}
+
+export async function verifyCode(user: User, code: string): Promise<User> {
+  const response = await fetch(`${API_URL}/auth/verify-code`, {
+    method: "POST",
+    headers: sessionHeaders(user),
+    body: JSON.stringify({ code }),
+  });
+  return parseResponse<User>(response, "Could not verify code.");
 }
 
 export async function updatePreferences(user: User, language: SupportedLanguage, lowBandwidth: number): Promise<User> {

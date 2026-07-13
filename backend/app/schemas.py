@@ -65,9 +65,14 @@ class VerificationRequest(BaseModel):
     channel: str = Field(..., pattern="^(email|sms|whatsapp)$")
 
 
+class VerificationConfirmRequest(BaseModel):
+    code: str = Field(..., min_length=4, max_length=12)
+
+
 class VerificationResponse(BaseModel):
     status: str
     message: str
+    demo_code: Optional[str] = None
 
 
 class CandidateProfileUpdate(BaseModel):

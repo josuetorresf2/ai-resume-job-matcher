@@ -62,7 +62,7 @@ async function fillTestId(page, testId, value) {
   await page.type(selector, value);
 }
 
-async function login(page, role) {
+async function login(page, role, channel = "email") {
   const label = role === "candidate" ? "Candidate" : "Recruiter";
   await page.goto(`${frontendUrl}?e2e=${role}-${Date.now()}`, { waitUntil: "domcontentloaded" });
   await waitForHydration(page);
@@ -71,12 +71,22 @@ async function login(page, role) {
   await fillTestId(page, "auth-email", uniqueEmail(role));
   await fillTestId(page, "auth-phone", "+593987654321");
   await fillTestId(page, "auth-password", "Password123!");
+  await page.select('[data-testid="auth-verification-channel"]', channel);
   await clickTestId(page, "auth-continue");
   await waitForText(page, role === "candidate" ? "Candidate profile" : "Recruiter profile");
 }
 
+async function verifyDemoAccount(page) {
+  await waitForText(page, "Account verification");
+  await clickTestId(page, "request-verification-code");
+  await waitForText(page, "Demo code: 123456");
+  await clickTestId(page, "verify-code");
+  await page.waitForFunction(() => !document.body.innerText.includes("Account verification"), { timeout: 10000 });
+}
+
 async function runCandidateFlow(page) {
-  await login(page, "candidate");
+  await login(page, "candidate", "whatsapp");
+  await verifyDemoAccount(page);
   await fillTestId(
     page,
     "resume-text",
